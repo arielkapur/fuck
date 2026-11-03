@@ -1,179 +1,336 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
 
-// The browser draws the world. The Node server only relays player positions.
-const WORLD_HALF = 4096; // 8.192 km by 8.192 km
-const view = document.querySelector('#world');
-const status = document.querySelector('#status');
-const coords = document.querySelector('#coords');
-const renderer = new THREE.WebGLRenderer({antialias:true, powerPreference:'high-performance'});
+// FUCK / World 001 · first patch. The scene and input stay client-side.
+// The existing WebSocket server relays positions; it does not render objects.
+const HALF_WORLD = 4096;
+const canvasHost = document.getElementById('world');
+const coords = document.getElementById('coords');
+const menu = document.getElementById('menu');
+const menuPanel = document.getElementById('menu-panel');
+const menuTitle = document.getElementById('menu-title');
+const menuBody = document.getElementById('menu-body');
+const titleScreen = document.getElementById('title-screen');
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
-renderer.setSize(innerWidth,innerHeight);
+renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-view.appendChild(renderer.domElement);
+canvasHost.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xa2d2e3);
-scene.fog = new THREE.Fog(0x9ebfd0, 150, 850);
-const camera = new THREE.PerspectiveCamera(65,innerWidth/innerHeight,.1,2000);
-scene.add(new THREE.HemisphereLight(0xcbeaff,0x35514b,2.0));
-const sunlight = new THREE.DirectionalLight(0xffeacb,2.5);
-sunlight.position.set(-130,220,-190);scene.add(sunlight);
+scene.fog = new THREE.Fog(0xa6c7d3, 210, 900);
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.05, 1900);
+scene.add(new THREE.HemisphereLight(0xe1efff, 0x485252, 2.25));
+const sunLight = new THREE.DirectionalLight(0xffead0, 2.1);
+sunLight.position.set(-130, 220, -180);
+scene.add(sunLight);
 
-// A sky dome follows the camera, so the horizon never runs out.
-const sky = new THREE.Mesh(
-  new THREE.SphereGeometry(1600,32,16),
-  new THREE.ShaderMaterial({
-    side:THREE.BackSide,depthWrite:false,fog:false,
-    vertexShader:'varying vec3 vDirection; void main(){ vDirection=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
-    fragmentShader:'varying vec3 vDirection; void main(){ float h=normalize(vDirection).y; vec3 horizon=vec3(0.67,0.82,0.87); vec3 zenith=vec3(0.075,0.23,0.43); vec3 ground=vec3(0.32,0.44,0.48); vec3 c=mix(horizon,zenith,smoothstep(-0.08,0.85,h)); c=mix(ground,c,smoothstep(-0.20,0.02,h)); gl_FragColor=vec4(c,1.0); }'
-  })
-);
-sky.frustumCulled=false;scene.add(sky);
-const sun = new THREE.Mesh(new THREE.SphereGeometry(50,16,12),new THREE.MeshBasicMaterial({color:0xffedc0,fog:false}));
-sky.add(sun);sun.position.set(-650,520,-1000);
+// Low-cost sky gradient dome, with a static sun disk.
+const sky = new THREE.Mesh(new THREE.SphereGeometry(1600, 32, 16), new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false, fog: false,
+  vertexShader: 'varying vec3 ray; void main(){ ray=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+  fragmentShader: 'varying vec3 ray; void main(){ float y=normalize(ray).y; vec3 horizon=vec3(.67,.82,.87); vec3 high=vec3(.075,.23,.43); vec3 low=vec3(.32,.44,.48); vec3 col=mix(horizon,high,smoothstep(-.08,.85,y)); col=mix(low,col,smoothstep(-.20,.02,y)); gl_FragColor=vec4(col,1.); }'
+}));
+sky.frustumCulled = false; scene.add(sky);
+const sunDisk = new THREE.Mesh(new THREE.SphereGeometry(50, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffedc0, fog: false }));
+sunDisk.position.set(-650, 520, -1000); sky.add(sunDisk);
 
-const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(WORLD_HALF*2,WORLD_HALF*2),
-  new THREE.MeshLambertMaterial({color:0x476d5f})
-);
-ground.rotation.x=-Math.PI/2;scene.add(ground);
-
-// Only draw the nearby grid, keeping the enormous world cheap.
-const grid = new THREE.GridHelper(400,40,0x7fa9a0,0x577d70);
-grid.position.y=.018;scene.add(grid);
-
-function stickFigure(color) {
-  const figure = new THREE.Group();
-  const mat = new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.12,roughness:.7});
-  const bone = new THREE.CylinderGeometry(.075,.075,1,7);
-  function segment(parent,x,y,z,length,radius=.075) {
-    const mesh = new THREE.Mesh(bone,mat);
-    mesh.scale.set(radius/.075,length,radius/.075);
-    mesh.position.set(x,y,z);parent.add(mesh);return mesh;
-  }
-  segment(figure,0,1.46,0,.96,.10);
-  const head = new THREE.Mesh(new THREE.SphereGeometry(.24,12,9),mat);
-  head.position.y=2.22;figure.add(head);
-  const arms=[],legs=[];
-  for(const side of [-1,1]) {
-    const arm = new THREE.Group();arm.position.set(side*.19,1.88,0);
-    segment(arm,side*.15,-.34,0,.70);
-    arm.rotation.z=-side*.32;figure.add(arm);arms.push(arm);
-    const leg = new THREE.Group();leg.position.set(side*.14,.98,0);
-    segment(leg,0,-.47,0,.94,.09);figure.add(leg);legs.push(leg);
-  }
-  figure.userData = {arms,legs};
-  return figure;
+// One concrete plane across the full world. No procedural scenery or streaming.
+const texCanvas = document.createElement('canvas');
+texCanvas.width = texCanvas.height = 128;
+const tctx = texCanvas.getContext('2d');
+tctx.fillStyle = '#424447'; tctx.fillRect(0, 0, 128, 128);
+const imageData = tctx.getImageData(0, 0, 128, 128);
+for (let i = 0; i < imageData.data.length; i += 4) {
+  const n = ((i * 13 + (i >>> 7) * 17) % 13) - 6;
+  imageData.data[i] += n;
+  imageData.data[i + 1] += n;
+  imageData.data[i + 2] += n;
 }
-const self = stickFigure(0x7cf5f2);
-scene.add(self);
+tctx.putImageData(imageData, 0, 0);
+const concrete = new THREE.CanvasTexture(texCanvas);
+concrete.wrapS = concrete.wrapT = THREE.RepeatWrapping;
+concrete.repeat.set(256, 256);
+concrete.colorSpace = THREE.SRGBColorSpace;
+concrete.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy());
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(HALF_WORLD * 2, HALF_WORLD * 2),
+  new THREE.MeshStandardMaterial({ map: concrete, color: 0xb9b9b9, roughness: 1 })
+);
+ground.rotation.x = -Math.PI / 2; ground.position.y = -0.035; scene.add(ground);
+
+// Fully joined black stick figures: every limb terminates at a joint.
+const black = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: .85 });
+function makeStickman() {
+  const body = new THREE.Group();
+  const jointGeo = new THREE.SphereGeometry(.105, 10, 8);
+  const boneGeo = new THREE.CylinderGeometry(1, 1, 1, 8);
+  const sphere = (x, y, z, radius) => {
+    const joint = new THREE.Mesh(jointGeo, black);
+    joint.scale.setScalar(radius / .105); joint.position.set(x, y, z); body.add(joint);
+  };
+  const bone = (from, to, radius = .085) => {
+    const a = new THREE.Vector3(...from), b = new THREE.Vector3(...to);
+    const segment = new THREE.Mesh(boneGeo, black);
+    segment.position.copy(a).add(b).multiplyScalar(.5);
+    segment.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+    segment.scale.set(radius, a.distanceTo(b), radius);
+    body.add(segment);
+  };
+  const rig = [];
+  const limb = (start, endpoint, radius) => {
+    const pivot = new THREE.Group(); pivot.position.set(...start); body.add(pivot);
+    const mesh = new THREE.Mesh(boneGeo, black);
+    const end = new THREE.Vector3(...endpoint); const origin = new THREE.Vector3();
+    mesh.position.copy(end).multiplyScalar(.5);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), end.clone().normalize());
+    mesh.scale.set(radius, end.length(), radius); pivot.add(mesh);
+    const tip = new THREE.Mesh(jointGeo, black);
+    tip.position.copy(end); tip.scale.setScalar(radius / .105); pivot.add(tip);
+    return pivot;
+  };
+  bone([0, .95, 0], [0, 1.85, 0], .105);
+  sphere(0, .95, 0, .15); sphere(0, 1.85, 0, .16);
+  sphere(0, 2.18, 0, .245);
+  bone([0, 1.85, 0], [0, 1.99, 0], .085);
+  // Shoulder bar bridges the arms; hip bar bridges the legs.
+  bone([-.26, 1.81, 0], [.26, 1.81, 0], .088);
+  bone([-.17, .95, 0], [.17, .95, 0], .09);
+  for (const side of [-1, 1]) {
+    const arm = limb([side * .26, 1.81, 0], [side * .21, -.74, 0], .076);
+    arm.rotation.z = side * .07;
+    const leg = limb([side * .17, .95, 0], [side * .14, -.91, 0], .09);
+    rig.push({ arm, leg });
+  }
+  body.userData.rig = rig;
+  return body;
+}
+const player = makeStickman(); scene.add(player);
 const peers = new Map();
 
-function hash(x,z,i){let n=Math.imul(x,374761393)^Math.imul(z,668265263)^Math.imul(i+19,2246822519);n=Math.imul(n^(n>>>13),1274126177);return ((n^(n>>>16))>>>0)/4294967296;}
-const chunkSize=128,chunkRadius=3;
-const pillarGeometry=new THREE.CylinderGeometry(.6,1.2,1,5);
-const pillarMaterial=new THREE.MeshStandardMaterial({color:0x668d8d,roughness:1,flatShading:true});
-const rocks = new THREE.InstancedMesh(pillarGeometry,pillarMaterial,2200);
-rocks.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-rocks.frustumCulled=false;scene.add(rocks);
-const dummy=new THREE.Object3D();
-let lastChunkX=Infinity,lastChunkZ=Infinity;
-function updateScenery() {
-  const cx=Math.floor(self.position.x/chunkSize),cz=Math.floor(self.position.z/chunkSize);
-  if(cx===lastChunkX&&cz===lastChunkZ)return;
-  lastChunkX=cx;lastChunkZ=cz;let count=0;
-  for(let dz=-chunkRadius;dz<=chunkRadius;dz++)for(let dx=-chunkRadius;dx<=chunkRadius;dx++){
-    const a=cx+dx,b=cz+dz;
-    for(let i=0;i<17;i++){
-      const x=(a+hash(a,b,i*3)) * chunkSize, z=(b+hash(a,b,i*3+1))*chunkSize;
-      if(Math.abs(x)>WORLD_HALF-12||Math.abs(z)>WORLD_HALF-12||Math.hypot(x,z)<16)continue;
-      const height=2+hash(a,b,i*3+2)*17;
-      dummy.position.set(x,height*.5,z);
-      const w=.8+hash(a,b,i+100)*2.4;
-      dummy.scale.set(w,height,w);
-      dummy.rotation.set(0,hash(a,b,i+200)*Math.PI*2,0);
-      dummy.updateMatrix();rocks.setMatrixAt(count++,dummy.matrix);
-    }
-  }
-  rocks.count=count;rocks.instanceMatrix.needsUpdate=true;
+// Static spawn structures. Building front faces the spawn, with a walk-in door.
+const buildingMaterial = new THREE.MeshStandardMaterial({ color: 0x727478, roughness: 1 });
+const frameMaterial = new THREE.MeshStandardMaterial({ color: 0x323436, roughness: 1 });
+const colliders = [];
+function block(x, y, z, w, h, d, material = buildingMaterial, solid = true) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+  mesh.position.set(x, y, z); scene.add(mesh);
+  if (solid) colliders.push({ minX: x - w/2, maxX: x + w/2, minZ: z - d/2, maxZ: z + d/2 });
+  return mesh;
+}
+const BX = 8, BZ = -12, BW = 10, BD = 10, H = 4.7;
+block(BX, H/2, BZ - BD/2, BW, H, .5);                 // back wall
+block(BX - BW/2, H/2, BZ, .5, H, BD);                  // left wall
+block(BX + BW/2, H/2, BZ, .5, H, BD);                  // right wall
+block(BX - 3.2, H/2, BZ + BD/2, 3.6, H, .5);         // front left
+block(BX + 3.2, H/2, BZ + BD/2, 3.6, H, .5);         // front right
+block(BX, 4.05, BZ + BD/2, 2.9, 1.3, .5);             // door lintel
+block(BX, H + .17, BZ, BW + .6, .35, BD + .6, frameMaterial, false);
+block(BX, .055, BZ, BW - .5, .11, BD - .5, frameMaterial, false);
+const npc = makeStickman(); npc.position.set(BX, .12, BZ - 1.3); npc.rotation.y = Math.PI; scene.add(npc);
+const interiorLight = new THREE.PointLight(0xffeac8, 32, 12);
+interiorLight.position.set(BX, 3.8, BZ); scene.add(interiorLight);
+
+// One intentionally simple tree beside the building.
+const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.32, .45, 4, 8), new THREE.MeshStandardMaterial({ color: 0x604536 }));
+trunk.position.set(BX + 8, 2, BZ + 1); scene.add(trunk);
+const leaves = new THREE.Mesh(new THREE.ConeGeometry(3.0, 7, 8), new THREE.MeshStandardMaterial({ color: 0x2f553e, roughness: 1, flatShading: true }));
+leaves.position.set(BX + 8, 6, BZ + 1); scene.add(leaves);
+colliders.push({ minX: BX + 7.4, maxX: BX + 8.6, minZ: BZ + .4, maxZ: BZ + 1.6 });
+function canStand(x, z) {
+  if (Math.abs(x) >= HALF_WORLD - 1 || Math.abs(z) >= HALF_WORLD - 1) return false;
+  const radius = .27;
+  return !colliders.some(c => x + radius > c.minX && x - radius < c.maxX &&
+                                   z + radius > c.minZ && z - radius < c.maxZ);
 }
 
-const keys=new Set();
-addEventListener('keydown',e=>{const k=e.key.toLowerCase();keys.add(k);if(k.startsWith('arrow')||k===' ')e.preventDefault()});
-addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
-addEventListener('blur',()=>keys.clear());
-let yaw=.65,pitch=.46,distance=12,drag=false,px=0,py=0;
-const canvas=renderer.domElement;
-canvas.addEventListener('pointerdown',e=>{drag=true;px=e.clientX;py=e.clientY;canvas.setPointerCapture(e.pointerId)});
-canvas.addEventListener('pointerup',()=>drag=false);
-canvas.addEventListener('pointercancel',()=>drag=false);
-canvas.addEventListener('pointermove',e=>{if(!drag)return;yaw-=(e.clientX-px)*.006;pitch=THREE.MathUtils.clamp(pitch+(e.clientY-py)*.005,.12,1.25);px=e.clientX;py=e.clientY});
-canvas.addEventListener('wheel',e=>{e.preventDefault();distance=THREE.MathUtils.clamp(distance+e.deltaY*.014,5,35)},{passive:false});
-
-const qp=new URLSearchParams(location.search);
-const localHost=['localhost','127.0.0.1'].includes(location.hostname);
-const defaultWs=localHost?'ws://localhost:3001':location.hostname==='fuck-world.onrender.com'?'wss://fuck-world.onrender.com':'wss://fuck-world.onrender.com';
-const endpoint=qp.get('server')||defaultWs;
-let socket,id=null;
-function connect() {
-  socket=new WebSocket(endpoint);status.textContent='Connecting to world…';
-  socket.onopen=()=>status.textContent='Connected';
-  socket.onerror=()=>status.textContent='Connection error';
-  socket.onclose=()=>{
-    status.textContent='Reconnecting (free server may be waking up)…';
-    for(const figure of peers.values())scene.remove(figure);
-    peers.clear();setTimeout(connect,3000);
-  };
-  socket.onmessage=e=>{
-    let msg;try{msg=JSON.parse(e.data)}catch{return}
-    if(msg.type==='welcome'){id=msg.id;return}
-    if(msg.type!=='state'||!Array.isArray(msg.players))return;
-    const visible=new Set();
-    for(const p of msg.players){
-      if(p.id===id||typeof p.id!=='string'||!Number.isFinite(p.x)||!Number.isFinite(p.z))continue;
-      visible.add(p.id);
-      let figure=peers.get(p.id);
-      if(!figure){figure=stickFigure(0xffbd83);peers.set(p.id,figure);scene.add(figure)}
-      const ox=figure.position.x,oz=figure.position.z;
-      figure.position.set(p.x,0,p.z);
-      if(Math.hypot(p.x-ox,p.z-oz)>.001)figure.rotation.y=Math.atan2(p.x-ox,p.z-oz);
+// Input/camera. Mouse cursor is hidden by CSS only during active gameplay.
+const keys = new Set();
+const options = { sensitivity: 1, fov: 70, drawDistance: 900, quality: 2 };
+let yaw = -.38, pitch = .35, distance = 9, savedDistance = 9;
+let dragging = false, lastX = 0, lastY = 0, paused = false, quit = false;
+const canvas = renderer.domElement;
+canvas.addEventListener('pointerdown', e => {
+  if (paused || quit) return;
+  dragging = true; lastX = e.clientX; lastY = e.clientY;
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointerup', () => dragging = false);
+canvas.addEventListener('pointercancel', () => dragging = false);
+canvas.addEventListener('pointermove', e => {
+  if (!dragging || paused || quit) return;
+  yaw -= (e.clientX - lastX) * .006 * options.sensitivity;
+  pitch = THREE.MathUtils.clamp(pitch + (e.clientY - lastY) * .005 * options.sensitivity, -.85, 1.25);
+  lastX = e.clientX; lastY = e.clientY;
+});
+canvas.addEventListener('wheel', e => {
+  if (paused || quit) return;
+  e.preventDefault();
+  distance = THREE.MathUtils.clamp(distance + e.deltaY * .015, 0, 36);
+  if (distance > 1.1) savedDistance = distance;
+}, { passive: false });
+addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    if (quit) return;
+    if (paused) closeMenu(); else openMenu();
+    return;
+  }
+  if (paused || quit) return;
+  const k = e.key.toLowerCase(); keys.add(k);
+  if (k.startsWith('arrow') || k === ' ') e.preventDefault();
+});
+addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+addEventListener('blur', () => keys.clear());
+const mainOptions = [
+  ['Inventory', 'inventory'],
+  ['Character', 'character'],
+  ['Skills', 'skills'],
+  ['Settings', 'settings'],
+  ['Resume', 'resume'],
+  ['Quit', 'quit']
+];
+function menuButtons(items) {
+  return items.map(([label, action]) => '<button class="menu-button" data-action="' + action + '">' + label + '</button>').join('');
+}
+function renderMenu(page = 'main') {
+  const names = { main:'PAUSED', inventory:'INVENTORY', character:'CHARACTER', skills:'SKILLS', settings:'SETTINGS' };
+  menuTitle.textContent = names[page] || 'PAUSED';
+  if (page === 'main') { menuBody.innerHTML = menuButtons(mainOptions); return; }
+  if (page === 'settings') {
+    menuBody.innerHTML = `
+      <label>SENSITIVITY <output id="sens-out">${options.sensitivity.toFixed(1)}</output>
+        <input id="sensitivity" type="range" min="0.2" max="3" step="0.1" value="${options.sensitivity}">
+      </label>
+      <label>FIELD OF VIEW <output id="fov-out">${options.fov}</output>
+        <input id="fov" type="range" min="55" max="100" step="1" value="${options.fov}">
+      </label>
+      <label>VIEW DISTANCE <output id="distance-out">${options.drawDistance}</output>
+        <input id="draw-distance" type="range" min="250" max="1500" step="50" value="${options.drawDistance}">
+      </label>
+      <label>RENDER RESOLUTION <select id="quality">
+        <option value="1">LOW</option><option value="1.5">MEDIUM</option><option value="2">HIGH</option>
+      </select></label>
+      ${menuButtons([['Back','main']])}`;
+    menuBody.querySelector('#quality').value = String(options.quality);
+    function range(id, key, output, onChange = () => {}) {
+      menuBody.querySelector(id).addEventListener('input', e => {
+        options[key] = Number(e.target.value);
+        menuBody.querySelector(output).textContent = key === 'sensitivity' ? options[key].toFixed(1) : options[key];
+        onChange();
+      });
     }
-    for(const [pid,figure] of peers)if(!visible.has(pid)){scene.remove(figure);peers.delete(pid)}
-    status.textContent='ONLINE · '+msg.players.length+' player(s)';
+    range('#sensitivity', 'sensitivity', '#sens-out');
+    range('#fov', 'fov', '#fov-out', () => { camera.fov = options.fov; camera.updateProjectionMatrix(); });
+    range('#draw-distance', 'drawDistance', '#distance-out', () => { scene.fog.far = options.drawDistance; camera.far = options.drawDistance + 100; camera.updateProjectionMatrix(); });
+    menuBody.querySelector('#quality').addEventListener('change', e => { options.quality = Number(e.target.value); resize(); });
+    return;
+  }
+  menuBody.innerHTML = '<div class="empty-panel">NOTHING HERE YET.</div>' + menuButtons([['Back', 'main']]);
+}
+function openMenu() { paused = true; dragging = false; keys.clear(); menu.hidden = false; renderMenu(); }
+function closeMenu() { paused = false; menu.hidden = true; keys.clear(); }
+function leaveWorld() {
+  quit = true; paused = false; menu.hidden = true; titleScreen.hidden = false;
+  keys.clear(); socket?.close(); socket = null; coords.hidden = true;
+}
+menuBody.addEventListener('click', e => {
+  const action = e.target.closest('button')?.dataset.action;
+  if (!action) return;
+  if (action === 'resume') closeMenu();
+  else if (action === 'quit') leaveWorld();
+  else renderMenu(action);
+});
+titleScreen.querySelector('button').addEventListener('click', () => {
+  quit = false; titleScreen.hidden = true; coords.hidden = false;
+  player.position.set(0, 0, 0); connect();
+});
+
+// Networking: Render is the authoritative shared room only for player coordinates.
+const explicit = new URLSearchParams(location.search).get('server');
+const local = ['localhost','127.0.0.1'].includes(location.hostname);
+const endpoint = explicit || (local ? 'ws://localhost:3001' : 'wss://fuck-world.onrender.com');
+let socket = null, playerId = null, reconnectHandle = null;
+function connect() {
+  if (quit) return;
+  socket = new WebSocket(endpoint);
+  socket.onmessage = e => {
+    let msg; try { msg = JSON.parse(e.data); } catch { return; }
+    if (msg.type === 'welcome') { playerId = msg.id; return; }
+    if (msg.type !== 'state' || !Array.isArray(msg.players)) return;
+    const seen = new Set();
+    for (const p of msg.players) {
+      if (p.id === playerId || typeof p.id !== 'string' || !Number.isFinite(p.x) || !Number.isFinite(p.z)) continue;
+      seen.add(p.id);
+      let figure = peers.get(p.id);
+      if (!figure) { figure = makeStickman(); peers.set(p.id, figure); scene.add(figure); }
+      const ox = figure.position.x, oz = figure.position.z;
+      figure.position.set(p.x, 0, p.z);
+      if (Math.hypot(p.x - ox, p.z - oz) > .02) figure.rotation.y = Math.atan2(p.x - ox, p.z - oz);
+    }
+    for (const [id, figure] of peers) if (!seen.has(id)) { scene.remove(figure); peers.delete(id); }
   };
+  socket.onclose = () => {
+    for (const fig of peers.values()) scene.remove(fig);
+    peers.clear(); playerId = null;
+    if (!quit) reconnectHandle = setTimeout(connect, 3000);
+  };
+  socket.onerror = () => {}; // Free Render service may be asleep.
 }
 connect();
 
-let prior=performance.now(),sent=0,step=0;
+let lastTime = performance.now(), lastSent = 0, step = 0;
+function resize() {
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, options.quality));
+  renderer.setSize(innerWidth, innerHeight);
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
 function frame(now) {
   requestAnimationFrame(frame);
-  const dt=Math.min((now-prior)/1000,.05);prior=now;
-  const f=Number(keys.has('w')||keys.has('arrowup'))-Number(keys.has('s')||keys.has('arrowdown'));
-  const s=Number(keys.has('d')||keys.has('arrowright'))-Number(keys.has('a')||keys.has('arrowleft'));
-  const len=Math.hypot(f,s)||1,speed=Number(keys.has('shift'))?17:8;
-  const mx=(Math.sin(yaw)*f+Math.cos(yaw)*s)/len;
-  const mz=(Math.cos(yaw)*f-Math.sin(yaw)*s)/len;
-  const moving=f!==0||s!==0;
-  if(moving){
-    self.position.x=THREE.MathUtils.clamp(self.position.x+mx*dt*speed,-WORLD_HALF+5,WORLD_HALF-5);
-    self.position.z=THREE.MathUtils.clamp(self.position.z+mz*dt*speed,-WORLD_HALF+5,WORLD_HALF-5);
-    self.rotation.y=Math.atan2(mx,mz);
-    step+=dt*speed*1.5;
+  const dt = Math.min(.05, (now - lastTime) / 1000 || 0); lastTime = now;
+  if (!paused && !quit) {
+    const f = Number(keys.has('w') || keys.has('arrowup')) - Number(keys.has('s') || keys.has('arrowdown'));
+    const s = Number(keys.has('d') || keys.has('arrowright')) - Number(keys.has('a') || keys.has('arrowleft'));
+    const norm = Math.hypot(f, s) || 1, speed = keys.has('shift') ? 16 : 7;
+    // Forward is opposite the camera offset. Right is its positive right vector.
+    const mx = (-Math.sin(yaw) * f + Math.cos(yaw) * s) / norm;
+    const mz = (-Math.cos(yaw) * f - Math.sin(yaw) * s) / norm;
+    const moving = f !== 0 || s !== 0;
+    if (moving) {
+      const x = player.position.x + mx * speed * dt;
+      const z = player.position.z + mz * speed * dt;
+      if (canStand(x, player.position.z)) player.position.x = x;
+      if (canStand(player.position.x, z)) player.position.z = z;
+      player.rotation.y = Math.atan2(mx, mz);
+      step += dt * speed * 1.8;
+    }
+    const swing = moving ? Math.sin(step) * .48 : 0;
+    for (let i = 0; i < 2; i++) {
+      player.userData.rig[i].leg.rotation.x = (i ? 1 : -1) * swing;
+      player.userData.rig[i].arm.rotation.x = (i ? -1 : 1) * swing * .7;
+    }
   }
-  const stride=moving?Math.sin(step)*.55:0;
-  for(let i=0;i<2;i++){
-    self.userData.legs[i].rotation.x=(i?1:-1)*stride;
-    self.userData.arms[i].rotation.x=(i?-1:1)*stride*.6;
+  const eyeY = player.position.y + 2.14;
+  const firstPerson = distance <= 1.1;
+  player.visible = !firstPerson;
+  if (firstPerson) {
+    camera.position.set(player.position.x, eyeY, player.position.z);
+    camera.lookAt(player.position.x - Math.sin(yaw) * Math.cos(pitch),
+      eyeY - Math.sin(pitch), player.position.z - Math.cos(yaw) * Math.cos(pitch));
+  } else {
+    camera.position.set(
+      player.position.x + Math.sin(yaw) * distance * Math.cos(pitch),
+      eyeY + Math.sin(pitch) * distance,
+      player.position.z + Math.cos(yaw) * distance * Math.cos(pitch));
+    camera.lookAt(player.position.x, player.position.y + 1.45, player.position.z);
   }
-  updateScenery();
-  grid.position.x=Math.round(self.position.x/10)*10;
-  grid.position.z=Math.round(self.position.z/10)*10;
-  camera.position.set(self.position.x+Math.sin(yaw)*Math.cos(pitch)*distance,self.position.y+1.2+Math.sin(pitch)*distance,self.position.z+Math.cos(yaw)*Math.cos(pitch)*distance);
-  camera.lookAt(self.position.x,1.4,self.position.z);
   sky.position.copy(camera.position);
-  if(socket?.readyState===WebSocket.OPEN&&now-sent>70){socket.send(JSON.stringify({type:'move',x:self.position.x,z:self.position.z}));sent=now}
-  if(coords)coords.textContent='X '+Math.round(self.position.x)+'  Z '+Math.round(self.position.z)+' · 8.2 km × 8.2 km';
-  renderer.render(scene,camera);
+  if (!quit && socket?.readyState === WebSocket.OPEN && now - lastSent > 70) {
+    socket.send(JSON.stringify({ type: 'move', x: player.position.x, z: player.position.z }));
+    lastSent = now;
+  }
+  coords.textContent = `X ${player.position.x.toFixed(1)}  Y ${player.position.y.toFixed(1)}  Z ${player.position.z.toFixed(1)}`;
+  renderer.render(scene, camera);
 }
 requestAnimationFrame(frame);
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
