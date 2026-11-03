@@ -23,7 +23,7 @@ renderer.domElement.addEventListener('pointerup',()=>drag=false);renderer.domEle
 renderer.domElement.addEventListener('pointermove',e=>{if(!drag)return;yaw-=(e.clientX-px)*.007;tilt=THREE.MathUtils.clamp(tilt+(e.clientY-py)*.005,.1,1.35);px=e.clientX;py=e.clientY});
 renderer.domElement.addEventListener('wheel',e=>{distance=THREE.MathUtils.clamp(distance+e.deltaY*.015,5,36);e.preventDefault()},{passive:false});
 const status=document.querySelector('#status');const explicit=new URLSearchParams(location.search).get('server');
-const url=explicit||(location.hostname==='localhost'||location.hostname==='127.0.0.1'?'ws://localhost:3001':null);
+const url=explicit||(location.hostname==='localhost'||location.hostname==='127.0.0.1'?'ws://localhost:3001':'wss://fuck-world.onrender.com');
 let socket=null,id=null;
 function connect(){if(!url)return;socket=new WebSocket(url);status.textContent='Connecting to shared world…';
  socket.onopen=()=>status.textContent='Connected to shared world';
