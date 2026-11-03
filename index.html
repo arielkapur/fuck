@@ -1,6 +1,27 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>FUCK — World 001</title><link rel="stylesheet" href="./server/public/style.css"></head>
-<body><div id="world"></div>
-<aside><strong>FUCK / WORLD 001</strong><p>WASD move · SHIFT sprint · drag look · scroll zoom</p><p id="status">Spawning…</p><p id="coords">8192 × 8192 world</p></aside>
-<script type="module" src="./server/public/main.js"></script></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>FUCK / World 001</title>
+  <link rel="stylesheet" href="./server/public/style.css">
+</head>
+<body>
+  <div id="world"></div>
+  <div id="coords" aria-live="off">X 0.0  Y 0.0  Z 0.0</div>
+  <div id="menu" class="overlay" hidden>
+    <section id="menu-panel" class="panel" aria-label="Pause menu">
+      <h1 id="menu-title">PAUSED</h1>
+      <div id="menu-body"></div>
+    </section>
+  </div>
+  <div id="title-screen" class="overlay" hidden>
+    <section class="panel">
+      <h1>FUCK</h1>
+      <p>DISCONNECTED FROM WORLD.</p>
+      <button class="menu-button" type="button">RETURN TO WORLD</button>
+    </section>
+  </div>
+  <script type="module" src="./server/public/main.js"></script>
+</body>
+</html>
