@@ -1,0 +1,81 @@
+FUCK / GAME DEVELOPMENT CONVERSATION ARCHIVE
+==================================================
+Purpose: preserve user design prompts and the assistant's responses as an
+ongoing development record. This is a readable project log, not a record of
+private reasoning or unseen system instructions. Older milestones are summaries
+because earlier turns were not originally recorded in this file. Going forward,
+new design prompts and corresponding assistant responses can be appended.
+
+EARLIER MILESTONES (SUMMARIZED, NOT VERBATIM)
+---------------------------------------------
+USER: Wanted an immersive game built by playtesting and experimentation, not
+by overplanning; had previously attempted YANTRA (Godot/3D assets became
+prohibitively laborious) and OPUS (OpenGL post-processing constrained changes).
+ASSISTANT: Suggested a lightweight browser implementation and avoiding
+rendering architecture that dictates game mechanics.
+
+USER: Asked for ASCII 3D, then raised the ambition to a real 3D online open
+world where friends could meet at any time, with inspirations including Rust,
+ESO, PUBG, and Roblox.
+ASSISTANT: Explained browser 3D is feasible using Three.js; a persistent MMO
+server is a separate engineering challenge. Suggested starting with friends
+sharing a world and a Node.js WebSocket backend.
+
+USER: Connected GitHub, created https://github.com/arielkapur/fuck,
+configured Render Web Service at https://fuck-world.onrender.com/ and asked
+for playable online multiplayer.
+ASSISTANT: Committed the initial Three.js client and WebSocket server, set up
+Render to serve the game at the root URL, and built an initial large world
+with sky, procedurally generated geometry and simple stickman avatars.
+
+2026-11-04 — PATCH 001 — VERBATIM DESIGN PROMPT
+-----------------------------------------------
+USER:
+# ***First patch to deploy:***
+
+**UI / Controls**
+
+> Remove current UI entirely.
+>
+> Show world position (x,y,z) in pixelated font family in far top left of screen in small text.
+>
+> Fix WASD (Currently A and D are inverted)
+>
+> Allow third-person to zoom into first-person, elder scrolls style.
+>
+> Hide cursor while in game.
+>
+> Press ESC to access main menu, which dims screen and introduces empty Inventory, Character, Skills submenus and Quit button, as well as Settings for customisability.
+
+**World**
+
+> Remove all the procedural scenery and procedural scenery generation from code.
+>
+> Replace the floor with concrete (solid dark grey texture, nothing fancy).
+>
+> Player character model: Connect all the limbs and ensure it is a pitch black stickman.
+>
+> Add 1 concrete building next to spawn with a tree next to it. Inside is an NPC who is identical to the player character.
+
+Generate these patch notes as well with patch-note approprite language while preserving tone and add them to a changelog. Add a changelog file to the repo and continue to add the latest Changelog to the Readme.md for this repo. Add the prompts and the conversation we are having (your side too) to a prompts.txt file as well.
+
+ASSISTANT (user-visible replies during implementation):
+"I’ll patch the live repo, not make another ZIP. I’ll handle controls and
+camera first, then the concrete spawn area, NPC, menu, and documentation.
+I’ll also add a conversation log for the design prompts and our responses."
+
+"I found the inverted A/D sign in the movement maths. I’m fixing that and
+making first-person kick in when the camera zooms all the way forward.
+The spawn building will have an actual doorway, with the NPC inside."
+
+"The core patch is in GitHub now. The old HUD and procedural pillars are gone;
+the ESC menu, concrete building, tree, and black stick figures are in.
+I’m finishing the changelog and prompt archive, then I’ll verify the
+committed files."
+
+ASSISTANT (implementation record):
+Implemented camera zoom, menu/submenus/settings, corrected controls,
+static concrete environment with building/tree/NPC, black connected
+stick figures, and a stripped-down coordinates-only HUD. Added CHANGELOG.md
+and a latest-changes excerpt in README.md. Deployed changes are subject to
+Render automatically rebuilding the main branch.
