@@ -1,1 +1,20 @@
-html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#82b7d0;color:#c5f2f7;font:12px ui-monospace,Menlo,monospace}#world,canvas{display:block;width:100%;height:100%}aside{position:fixed;top:16px;left:18px;background:#04111bdd;border:1px solid #267e8d;padding:12px 18px;pointer-events:none;line-height:1.7;max-width:calc(100vw - 36px)}strong{letter-spacing:.15em}p{margin:5px 0}
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#111;color:#ddd;font-family:ui-monospace,Menlo,Consolas,monospace}
+#world,#world canvas{width:100%;height:100%;display:block}
+#world canvas{cursor:none;touch-action:none}
+#coords{position:fixed;top:12px;left:12px;font-family:'Press Start 2P',ui-monospace,monospace;font-size:9px;line-height:1.7;letter-spacing:0;color:#fff;text-shadow:1px 1px #000,0 0 4px #000;pointer-events:none;z-index:3}
+.overlay{position:fixed;inset:0;z-index:5;background:rgba(0,0,0,.73);display:flex;align-items:center;justify-content:center;cursor:default}
+[hidden]{display:none!important}
+.panel{width:min(450px,90vw);max-height:90vh;overflow:auto;padding:32px;background:#151618;border:1px solid #61666a;box-shadow:0 15px 70px #000a}
+.panel h1{font-size:19px;letter-spacing:.27em;font-weight:600;margin:0 0 25px;color:#fff}
+.panel p,.empty-panel{font-size:12px;letter-spacing:.07em;color:#aab0b3;margin-bottom:24px}
+#menu-body{display:flex;flex-direction:column;gap:9px}
+.menu-button{display:block;width:100%;padding:13px 14px;background:#292c2e;color:#e0e4e4;text-align:left;cursor:pointer;border:1px solid #43484a;letter-spacing:.12em;font:13px ui-monospace,Menlo,monospace}
+.menu-button:hover,.menu-button:focus-visible{background:#475154;border-color:#9aa8aa;outline:none}
+#menu-body label{display:block;margin:12px 0 17px;font-size:11px;letter-spacing:.1em}
+#menu-body output{float:right}
+#menu-body input,#menu-body select{display:block;width:100%;margin-top:13px;accent-color:#9ea8aa}
+#menu-body select{background:#2c3033;color:white;padding:9px}
+@media(max-width:500px){#coords{font-size:7px;top:8px;left:8px}.panel{padding:22px}}
