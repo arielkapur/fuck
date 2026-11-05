@@ -21,13 +21,16 @@
   <div id="coords" aria-live="off">X 0.0  Y 0.0  Z 0.0</div>
   <canvas id="minimap" width="168" height="168" aria-label="Local forest minimap"></canvas>
   <div id="tutorial" class="tutorial" role="status" aria-live="off">
-    <div class="tutorial-main">PRESS <kbd class="esc-key">ESC</kbd> TO ACCESS MENU.</div>
+    <div id="hint-menu" class="tutorial-main">PRESS <kbd class="esc-key">ESC</kbd> TO ACCESS MENU.</div>
+    <div id="hint-attack" class="tutorial-main" hidden>PRESS <kbd class="esc-key">LMB</kbd> TO ATTACK.</div>
     <div class="tutorial-sub">DISABLE TUTORIAL BY PRESSING <kbd class="keycap">T</kbd></div>
   </div>
   <div id="menu" class="overlay" hidden>
-    <section id="menu-panel" class="panel" aria-label="Pause menu">
-      <h1 id="menu-title">PAUSED</h1>
-      <div id="menu-body"></div>
+    <section id="menu-panel" class="panel full-panel" aria-label="Pause menu">
+      <nav id="menu-tabs" class="menu-tabs" aria-label="Game menus"></nav>
+      <h1 id="menu-title" class="menu-title">INVENTORY</h1>
+      <div id="menu-body" class="menu-body"></div>
+      <canvas id="world-map" width="640" height="640" aria-label="Discovered world map" hidden></canvas>
     </section>
   </div>
   <div id="title-screen" class="overlay" hidden>
