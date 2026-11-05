@@ -107,3 +107,34 @@ USER: "It's still grey, there's no errors but there's an XYZ indicator in the to
 ASSISTANT: "That helps: the XYZ indicator means the client is running, so this looks more like a visibility/rendering problem than a startup crash. I’ll reproduce the scene locally, then fix the renderer so the ground and objects are clearly distinguishable."
 ASSISTANT (progress): "I found two concrete rendering problems: ground and objects used mismatched depth values, and the monochrome renderer drew nearly everything with the same shade. Both are patched. I’m adding an F3 diagnostic readout so, if anything still disappears, we can see whether geometry is reaching the screen."
 ASSISTANT (implementation): Fixed ground Z-buffer distance convention and separated ASCII ground/geometry contrast. F3 toggles a diagnostics overlay. Browser verification still required.
+
+2026-11-05 — PATCH 2.1 — VERBATIM USER DESIGN PROMPT
+--------------------------------------------------
+USER:
+Game is now functional.
+
+Rendering changes required.
+
+Patch 2.1 -
+
+**World & Environment**
+
+> Ensure building borders i.e. edges are visible against walls which are darker shaded
+>
+> Generate a skybox in the ascii style which features some stars
+
+**Player movement**
+
+> Enable character to jump
+>
+> Ensure LMB doesn't have to be held down to move camera - ensure pointer stays hidden and remains screen center unless escape is pressed to access menu.
+
+**UI**
+
+> Introduce a UI element in a pixel front that pulses on game start and says "Press ESC to access menu." <ESC should be highlighted gold> as part of a tutorial system, which can be disabled by pressing T. "Disable tutorial by pressing [T]" <T should be in a box resmbling the key on the keyboard>. The prompt to access the main menu disappears after pressing ESC for the first time, or pressing T to disable/reactivate the tutorial.
+
+ASSISTANT (user-visible progress):
+"Patch 2.1, got it. I’ll add proper mouse-look, jumping, sharper ASCII building edges, and a starry sky, then wire up the tutorial prompts and push everything to GitHub."
+"The jump and free-look controls are in, along with highlighted wall edges and stars that move correctly as the camera turns. Next I’m finishing the tutorial overlay and syncing jump height between players."
+
+ASSISTANT (implementation): Added geometric ASCII outlines, sky stars projected from fixed celestial directions, pointer-lock camera and ESC pause, a Space jump with gravity and networked Y, plus a pulsing pixel-font tutorial and T toggle with stored preference. Final browser verification remains with playtesting.
