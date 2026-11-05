@@ -91,3 +91,12 @@ ASSISTANT: "Got it — ASCII is the actual renderer, not a filter over a normal 
 ASSISTANT (progress): "The ASCII renderer and humanoid model are committed. The character now has a torso, head, shoulders, hands, legs, and feet, with a walking cycle. I’m tightening the character proportions and text-rendering performance before calling the patch finished."
 ASSISTANT (progress): "The game now draws its 3D geometry directly as characters, with a depth buffer to handle what’s in front of what. Monochrome is the default, and I added a coloured mode and ASCII character-size settings for experimentation. I’m updating the changelog and prompt log now."
 ASSISTANT (implementation): Built `ascii.js` as a CPU software renderer with depth buffering, 3D point/normal projection, analytic ground and canvas glyph output. Replaced the character with a 3D humanoid made of connected primitive volumes and animated arm/leg groups. Kept online multiplayer and other features from Patch 001. Deployment and final playtesting remain subject to Render and browser verification.
+
+2026-11-05 — PATCH 002 GREY-SCREEN DEBUG
+----------------------------------------
+USER: "Debud for Patch 2:
+
+It's showing an empty grey screen"
+ASSISTANT: "Got it. I’ll check the live client code for a startup or rendering error and push a fix, rather than guessing at the grey screen."
+ASSISTANT: "I can’t inspect the browser console remotely, so I can’t confirm the exact failure yet. I’ve narrowed it to client startup or the ASCII draw path. I’m adding an on-screen error report and a safer draw loop so we can get a useful failure message instead of just grey."
+ASSISTANT (implementation): Added startup/error diagnostic UI, protected the ASCII render call, and fixed character-cell measurements. Further debugging may require the user to report any on-screen error.
