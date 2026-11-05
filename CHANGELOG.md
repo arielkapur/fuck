@@ -2,6 +2,29 @@
 
 All notable updates to **FUCK / World 001** are recorded here. Newest first.
 
+## [0.1.5] — 2026-11-05 — Patch 2.3: Unknown Territory
+
+### Player & Combat
+- **Corrected the backwards-facing player.** The avatar's forward direction is now consistently +Z in model space, matching its movement heading. Feet point forward.
+- **Refined the silhouette.** Removed extraneous facial and muscle-like geometry; the avatar now has a plain, homogeneous head, slim cylindrical limbs, and simple 3D body proportions.
+- **Added unarmed LMB attack.** When the cursor is locked, left-click triggers a short hand-wave/punch animation with a basic cooldown. No damage, hitboxes or enemy interaction yet.
+- **Advanced the tutorial:** after opening the ESC menu once, the tutorial changes to **Press LMB to attack.** It disappears after the first attack. T still toggles the tutorial.
+
+### Map & Navigation
+- **M opens the Map**, also available as a tab in ESC.
+- **Rebuilt the pause menu** as unboxed, text-only horizontal tabs along the top: Inventory, Character, Skills, Map and Settings, plus Resume and Quit. Each tab reveals its full-screen submenu.
+- **Fog-of-war discovery.** Only terrain inside the local player's camera view and discovery range is mapped; nearby ridges block line-of-sight discovery. Visited cells are saved per browser using localStorage. The map displays discovered terrain, trees and discovered landmarks, not the entire world.
+- The minimap uses discovered terrain too. This is approximate terrain visibility, not pixel-perfect mesh/building occlusion.
+
+### World & Camera
+- **Goblin camp constructed nearby** at approximately X -69, Z -39: sharpened wooden palisade spikes, an animated campfire, and one green goblin wearing ragged brown clothing. The goblin has no AI.
+- **Ground-aware camera collision.** The third-person camera checks the terrain along its path and moves inward toward the player instead of clipping beneath hills.
+
+### Engineering notes
+- Camp scenery is client-side and deterministic. New modules: `camp.js`, `cartography.js`.
+- No combat effects, inventory items, enemy damage, physics ragdolls or server authority are introduced by this patch.
+- Committed code is syntax-checked; browser performance and visuals still require live playtesting.
+
 ## [0.1.4] — 2026-11-05 — Patch 2.2: Into the Woods
 
 ### World & Environment
