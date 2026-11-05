@@ -87,7 +87,7 @@ export class AsciiRenderer {
     this.edges.set(mesh,edges);
   }
   setResolution(value){this.cellHeight=Number(value)||10.5;this.resize()}
-  setPalette(value){this.mode=value==='mono'?'mono':'color'}
+  setPalette(value){this.mode=value==='mono'?'mono':'color';this.makeAtlas()}
   makeAtlas(){
     const w=Math.ceil(this.cellWidth),h=Math.ceil(this.cellHeight);
     this.tileW=w;this.tileH=h;
