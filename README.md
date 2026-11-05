@@ -4,28 +4,30 @@ A browser-based experimental **3D multiplayer world**, built with Three.js and a
 
 **Play:** https://fuck-world.onrender.com/
 
-## Latest changelog — v0.1.4 (2026-11-05)
+## Latest changelog — v0.1.5 (2026-11-05)
 
-**Patch 2.2 — Into the Woods**
+**Patch 2.3 — Unknown Territory**
 
-- A **seeded procedural forest** now surrounds a deliberately flat, open spawn clearing. A fixed pool of up to 145 tree models is recycled as you move.
-- **Rolling terrain elevation** uses inexpensive multi-octave value noise; jumping and walking now follow the ground. In Three.js, height is **Y**, not Z.
-- A **pixel minimap** appears under XYZ coordinates with vegetation, terrain, player facing, other players and the spawn building.
-- **About 2× as many ASCII cells** at the default 10.5px character size, with density controls in Settings.
-- **Colour/contrast upgrade:** distinct vegetation, concrete, soil, silhouettes, edges and star palettes; cached coloured glyph atlas for drawing.
-- **Unicode glyph accents** include selected Chinese/Japanese and Devanagari symbols, with fixed-cell clipping. Complete Unicode coverage is neither practical nor guaranteed.
+- Corrected the backwards-facing avatar and simplified the model into a featureless, lean 3D humanoid.
+- Added an **unarmed LMB hand-wave punch**. The tutorial now introduces attacking after the ESC menu is first opened.
+- **M opens the Map**, also accessible from the new borderless, horizontal ESC menu tabs.
+- The map reveals only cells seen inside the local camera's view and discovery radius; hills can obstruct visibility. Exploration persists **per browser**.
+- Added a nearby **goblin camp** with wooden spikes, an animated fire and one green, rag-clothed goblin (no AI yet).
+- Third-person camera now moves in toward the player when terrain obstructs it.
 
-See [CHANGELOG.md](CHANGELOG.md) for detailed release notes and [prompts.txt](prompts.txt) for the design conversation.
+See [CHANGELOG.md](CHANGELOG.md) for the complete release notes and [prompts.txt](prompts.txt) for the design archive.
 
 ## Controls
 
 - **WASD / arrows**: move (A left, D right)
 - **Shift**: sprint
 - **Click once**: lock mouse and rotate camera without holding a button
+- **LMB**: unarmed hand-wave attack (visual only)
 - **Space**: jump
 - **T**: toggle tutorial prompts
 - **Scroll**: zoom, including into first-person
-- **Escape**: pause/resume, open settings and submenus
+- **M**: open/close the discovered-world map
+- **Escape**: open horizontal menu tabs, resume
 - **Quit**: disconnect from multiplayer and return to title screen
 
 ## Local development
@@ -50,7 +52,7 @@ Render: **Web Service** · Root Directory `server` · Build `npm install` · Sta
 
 Enable auto-deploy on Render to redeploy the game whenever changes land on `main`. On free hosting, the service can sleep during inactivity.
 
-**Canonical client source:** `server/public/main.js`, `server/public/ascii.js`, `server/public/terrain.js`, `server/public/forest.js`, `server/public/index.html`, `server/public/style.css`. Render serves those directly. The repository-root `index.html` points at the same client for local Python hosting and optional GitHub Pages. Legacy root-level `main.js` and `style.css` are not active in the game.
+**Canonical client source:** `server/public/main.js`, `server/public/ascii.js`, `server/public/terrain.js`, `server/public/forest.js`, `server/public/camp.js`, `server/public/cartography.js`, `server/public/index.html`, `server/public/style.css`. Render serves those directly. The repository-root `index.html` points at the same client for local Python hosting and optional GitHub Pages. Legacy root-level `main.js` and `style.css` are not active in the game.
 
 ## Current limitations
 
