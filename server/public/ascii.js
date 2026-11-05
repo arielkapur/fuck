@@ -56,14 +56,33 @@ export class AsciiRenderer {
   constructor(canvas, scene, camera) {
     this.canvas=canvas;this.scene=scene;this.camera=camera;
     this.ctx=canvas.getContext('2d',{alpha:false});
-    this.meshes=new Map();this.cellHeight=12;this.mode='mono';
+    this.meshes=new Map();this.edges=new Map();this.cellHeight=12;this.mode='mono';
+    // Deterministic stars fixed to celestial directions, not screen pixels.
+    this.stars=Array.from({length:450},(_,i)=>{
+      const y=1-2*(i+.5)/450;
+      const angle=i*2.399963229728653;
+      const radius=Math.sqrt(1-y*y);
+      return new THREE.Vector3(radius*Math.cos(angle),y,radius*Math.sin(angle));
+    });
     this.frame=0;
     this.resize();
   }
   register(mesh, density=125, maxSamples=1600) {
     this.meshes.set(mesh,sampleMesh(mesh,density,maxSamples));
   }
-  unregister(mesh){this.meshes.delete(mesh)}
+  unregister(mesh){this.meshes.delete(mesh);this.edges.delete(mesh)}
+  registerEdges(mesh){
+    // Local box corners, transformed each frame along with wall geometry.
+    const {min,max}=mesh.geometry.boundingBox || (mesh.geometry.computeBoundingBox(),mesh.geometry.boundingBox);
+    const corners=[];
+    for(const x of [min.x,max.x])for(const y of [min.y,max.y])for(const z of [min.z,max.z])corners.push([x,y,z]);
+    const edges=[];
+    for(let i=0;i<8;i++)for(let j=i+1;j<8;j++){
+      const differing=(corners[i][0]!==corners[j][0])+(corners[i][1]!==corners[j][1])+(corners[i][2]!==corners[j][2]);
+      if(differing===1) edges.push([corners[i],corners[j]]);
+    }
+    this.edges.set(mesh,edges);
+  }
   setResolution(n){this.cellHeight=Number(n);this.resize()}
   setPalette(name){this.mode=name}
   resize(){
@@ -163,6 +182,48 @@ export class AsciiRenderer {
       }
     }
 
+    // Project box outlines into the exact same z-buffer as shaded surfaces.
+    // Makes dark wall boundaries read clearly without changing the 3D scene.
+    const project=(point,world)=>{
+      const p=new THREE.Vector3(...point).applyMatrix4(world).applyMatrix4(inverse);
+      const z=-p.z;
+      if(z<=cam.near||z>=cam.far)return null;
+      const nx=p.x/(z*f*aspect),ny=p.y/(z*f);
+      return {x:(nx*.5+.5)*cols,y:(.5-ny*.5)*rows,z};
+    };
+    for(const [mesh,segments] of this.edges){
+      if(!mesh.visible||!this.isVisible(mesh))continue;
+      mesh.updateWorldMatrix(true,false);
+      for(const [a,b] of segments){
+        const pa=project(a,mesh.matrixWorld),pb=project(b,mesh.matrixWorld);
+        if(!pa||!pb)continue;
+        const count=Math.ceil(Math.max(Math.abs(pb.x-pa.x),Math.abs(pb.y-pa.y))*1.5);
+        if(count<1||count>1200)continue;
+        for(let i=0;i<=count;i++){
+          const t=i/count,x=Math.floor(pa.x+(pb.x-pa.x)*t),y=Math.floor(pa.y+(pb.y-pa.y)*t);
+          if(x<0||y<0||x>=cols||y>=rows)continue;
+          const z=pa.z+(pb.z-pa.z)*t,k=y*cols+x;
+          if(z<=depth[k]+.42){
+            depth[k]=Math.min(depth[k],z);
+            kind[k]=3;symbol[k]=GLYPHS.length-1;
+            r[k]=233;g[k]=230;b[k]=211;
+          }
+        }
+      }
+    }
+    // Stars only occupy the empty sky; projection follows camera rotation.
+    for(let i=0;i<this.stars.length;i++){
+      const dir=this.stars[i].clone().transformDirection(inverse);
+      if(dir.z>=-.01)continue;
+      const nx=dir.x/(-dir.z*f*aspect),ny=dir.y/(-dir.z*f);
+      const x=Math.floor((nx*.5+.5)*cols),y=Math.floor((.5-ny*.5)*rows);
+      if(x<0||y<0||x>=cols||y>=rows)continue;
+      const k=y*cols+x;
+      if(kind[k]!==0)continue;
+      kind[k]=4;
+      symbol[k]=i%13===0?2:1;
+      r[k]=215;g[k]=226;b[k]=255;
+    }
     this.visibleSamples=visibleSamples;
     this.meshCount=this.meshes.size;
     ctx.fillStyle='#0a131b';ctx.fillRect(0,0,this.width,this.height);
@@ -172,7 +233,9 @@ export class AsciiRenderer {
       const bands=[
         {kind:0,color:'#5b7c8f'},
         {kind:1,color:'#53606a'},
-        {kind:2,color:'#e7eff4'}
+        {kind:2,color:'#d9e5ed'},
+        {kind:3,color:'#fff2bb'},
+        {kind:4,color:'#f3f6ff'}
       ];
       for(const band of bands){
         ctx.fillStyle=band.color;
@@ -183,6 +246,8 @@ export class AsciiRenderer {
             if(kind[k]!==band.kind){line+=' ';continue;}
             line+=band.kind===0?((x*17+y*13)%31===0?'.':' '):
               band.kind===1?GLYPHS[Math.max(1,symbol[k])]:
+              band.kind===3?'#':
+              band.kind===4?(symbol[k]===2?'*':'.'):
               GLYPHS[Math.max(13,symbol[k])];
           }
           ctx.fillText(line,0,y*this.cellHeight);
@@ -204,7 +269,7 @@ export class AsciiRenderer {
           green=Math.round(skyColor[1]*(.68+.32*daylight));
           blue=Math.round(skyColor[2]*(.76+.24*daylight));
         } else {
-          char=GLYPHS[symbol[k]];
+          char=kind[k]===3?'#':kind[k]===4?(symbol[k]===2?'*':'.'):GLYPHS[symbol[k]];
           if(this.mode==='mono'){
             const brightness=Math.round(r[k]*.2126+g[k]*.7152+b[k]*.0722);
             red=green=blue=clamp(brightness+40,0,255);
