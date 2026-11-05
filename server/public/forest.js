@@ -15,6 +15,8 @@ export function createForest(scene,ascii) {
     const tree=new THREE.Group();
     const trunk=new THREE.Mesh(trunkGeo,bark);
     const canopy=new THREE.Mesh(canopyGeo,foliage);
+    trunk.userData.asciiType=6;
+    canopy.userData.asciiType=7;
     tree.add(trunk,canopy);scene.add(tree);
     ascii.register(trunk,37,66);ascii.register(canopy,65,140);
     tree.visible=false;
