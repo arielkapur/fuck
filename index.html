@@ -17,6 +17,7 @@
   window.addEventListener('error',e=>showBootFailure(e.message||'Script could not load'));
   window.addEventListener('unhandledrejection',e=>showBootFailure(e.reason?.message||String(e.reason)));
   </script>
+  <div id="render-debug" hidden style="position:fixed;top:34px;left:12px;z-index:3;color:#f6d88a;background:#111b;padding:6px;font:11px monospace;pointer-events:none"></div>
   <div id="coords" aria-live="off">X 0.0  Y 0.0  Z 0.0</div>
   <div id="menu" class="overlay" hidden>
     <section id="menu-panel" class="panel" aria-label="Pause menu">
