@@ -18,3 +18,12 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#111;color:
 #menu-body input,#menu-body select{display:block;width:100%;margin-top:13px;accent-color:#9ea8aa}
 #menu-body select{background:#2c3033;color:white;padding:9px}
 @media(max-width:500px){#coords{font-size:7px;top:8px;left:8px}.panel{padding:22px}}
+
+/* Center-bottom tutorial overlay; no pointer interception during gameplay. */
+.tutorial{position:fixed;left:50%;bottom:7%;transform:translateX(-50%);z-index:4;pointer-events:none;text-align:center;width:min(95vw,850px);font-family:'Press Start 2P',ui-monospace,monospace;text-shadow:2px 2px 0 #000,0 0 10px #000}
+.tutorial-main{font-size:clamp(9px,1.05vw,13px);line-height:2.4;color:#f8f5ed;animation:tutorial-pulse 2.4s ease-in-out infinite}
+.tutorial-sub{font-size:clamp(7px,.70vw,10px);line-height:2.8;color:#d8d6d2}
+.esc-key{color:#f5c35b;font:inherit}
+.keycap{display:inline-block;min-width:22px;padding:5px 6px;border:1px solid #bdb8a4;border-bottom:3px solid #bdb8a4;border-radius:3px;background:#212327;color:#ffeac6;font:inherit;text-shadow:none}
+@keyframes tutorial-pulse{0%,100%{opacity:.46;filter:brightness(.8)}50%{opacity:1;filter:brightness(1.28)}}
+@media(prefers-reduced-motion:reduce){.tutorial-main{animation:none}}
