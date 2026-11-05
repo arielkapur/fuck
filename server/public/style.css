@@ -31,3 +31,21 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#111;color:
 /* Miniature top-down terrain view, anchored beneath XYZ coordinates. */
 #minimap{position:fixed;left:12px;top:39px;z-index:3;width:168px;height:168px;background:#0b191b;border:1px solid #779b95;box-shadow:0 2px 18px #0009;pointer-events:none;image-rendering:pixelated}
 @media(max-width:500px){#minimap{left:8px;top:31px;width:132px;height:132px}}
+
+/* Patch 2.3: borderless horizontal nav at top, full-screen page content. */
+.overlay{align-items:stretch;justify-content:stretch}
+.full-panel{width:100vw;max-height:100vh;height:100vh;padding:0;background:rgba(8,11,16,.86);border:0;box-shadow:none;overflow:auto;display:flex;flex-direction:column}
+.menu-tabs{display:flex;align-items:center;justify-content:flex-start;flex-wrap:wrap;gap:clamp(7px,2vw,30px);padding:clamp(20px,3.4vh,38px) clamp(14px,4vw,70px) 16px}
+.menu-tabs .tab{appearance:none;background:none;border:0;border-radius:0;padding:10px 2px;color:#a5aeb9;font:clamp(10px,1.15vw,15px) 'Press Start 2P',ui-monospace,monospace;cursor:pointer;letter-spacing:0;text-transform:uppercase}
+.menu-tabs .tab:hover,.menu-tabs .tab:focus-visible{color:#f4eddf;outline:none;text-decoration:underline;text-underline-offset:8px}
+.menu-tabs .tab.active{color:#eac174;text-decoration:underline;text-underline-offset:9px}
+.menu-tabs .quit-tab{color:#c18a8a}
+.tab-spacer{flex:1 1 50px}
+.menu-title{margin:18px clamp(14px,5vw,80px) 4px!important;font:clamp(12px,2vw,22px) 'Press Start 2P',ui-monospace,monospace!important;letter-spacing:.1em!important}
+.menu-body{flex:1;display:flex;flex-direction:column;align-items:center;width:100%;padding:12px clamp(14px,4vw,60px) 44px}
+.menu-body>.empty-panel{margin-top:17vh}
+.menu-body>label{width:min(530px,90vw);font:11px 'Press Start 2P',monospace}
+#world-map{display:block;width:min(80vmin,640px);height:min(80vmin,640px);max-width:calc(100vw - 30px);object-fit:contain;image-rendering:pixelated;border:1px solid #526564;background:#090d15;margin:0 auto 35px}
+.map-controls{display:flex;align-items:center;justify-content:center;gap:15px;margin:0 0 15px;color:#b9c6bf;font:clamp(9px,1vw,12px) 'Press Start 2P',monospace;text-align:center}
+.map-controls button{width:31px;height:31px;border:1px solid #727973;color:#eac174;background:#1a2228;font-size:19px;cursor:pointer}
+@media(max-width:700px){.menu-tabs{gap:10px}.menu-tabs .tab{font-size:9px}.tab-spacer{flex:0 1 5px}#world-map{width:min(90vw,65vh);height:min(90vw,65vh)}}
