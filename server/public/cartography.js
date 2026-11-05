@@ -33,6 +33,14 @@ export function createCartography(){
       if(depth<=.2)continue;
       if(Math.abs(vx*sideX+vy*sideY+vz*sideZ)>depth*tanX*1.1)continue;
       if(Math.abs(vx*upX+vy*upY+vz*upZ)>depth*tanY*1.25)continue;
+      // Terrain ridges block discovery; do not reveal terrain behind hills.
+      let occluded=false;
+      for(let step=1;step<=4;step++){
+        const t=step/5;
+        const rx=cameraX+vx*t,rz=cameraZ+vz*t,ry=cameraY+vy*t;
+        if(terrainHeight(rx,rz)>ry+.5){occluded=true;break;}
+      }
+      if(occluded)continue;
       visited.set(key(x,z),[x,z]);
     }
     const now=performance.now();
