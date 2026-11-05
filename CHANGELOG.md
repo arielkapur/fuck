@@ -2,6 +2,29 @@
 
 All notable updates to **FUCK / World 001** are recorded here. Newest first.
 
+## [0.1.3] — 2026-11-05 — Patch 2.1: The Sky Has Eyes
+
+### World & Rendering
+- **Made concrete building edges visible.** The software ASCII renderer now projects explicit box-edge outlines into the existing depth buffer, separating corners, rooflines and door frames from shaded wall faces.
+- **Added an ASCII starfield.** Stars exist as fixed 3D directions and respond to camera movement; they only appear in unobstructed sky, never over walls or terrain.
+- Kept the existing flat concrete world and all multiplayer foundations.
+
+### Player Movement
+- **Added jumping:** Space launches the character with gravity and a grounded landing. Player height is now replicated to nearby clients over WebSockets.
+- **Mouse-look is now hands-free.** Click the game once to lock the pointer and look around freely without holding LMB. ESC releases the pointer and opens the menu; Resume reacquires it where the browser allows.
+- Note: browsers require a user click to enter pointer lock; pointer capture cannot activate automatically on page load.
+
+### Tutorial UI
+- Introduced a pulsing pixel-font tutorial prompt: **PRESS ESC TO ACCESS MENU**, with gold ESC.
+- Added **DISABLE TUTORIAL BY PRESSING [T]**, including a keyboard-style T keycap.
+- First ESC acknowledgement hides the prompt. T toggles the tutorial back on/off, and the preference survives refreshes where browser storage is available.
+- The tutorial vanishes while the menu is open.
+
+### Technical
+- Preserved the ASCII-first CPU renderer; no WebGL filter.
+- New outlines are geometric and depth-tested, rather than drawn as screen-space decoration.
+- Code syntax checked. Live browser playtesting remains necessary.
+
 ## [0.1.2b] — 2026-11-05 — Visibility Fix
 
 - Fixed mismatched depth comparisons between the analytic ground and projected 3D surfaces.
