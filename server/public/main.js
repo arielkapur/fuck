@@ -53,11 +53,11 @@ function makeHuman() {
     place(unitSphere,bodyMaterial,arm,side*.06,-.82,0,.097,.24,.099);
     place(unitSphere,skinMaterial,arm,side*.065,-1.065,0,.105,.15,.082);
     arms.push(arm);
-    const leg=new THREE.Group();root.add(leg);leg.position.set(side*.17,.91,0);
+    const leg=new THREE.Group();root.add(leg);leg.position.set(side*.17,1.10,0);
     place(unitSphere,bodyMaterial,leg,0,-.30,0,.20,.38,.22);
     place(unitSphere,bodyMaterial,leg,0,-.70,0,.14,.15,.155);
     place(unitSphere,bodyMaterial,leg,0,-.96,0,.135,.25,.14);
-    place(unitSphere,bodyMaterial,leg,0,-1.16,-.13,.15,.105,.27);
+    place(unitSphere,bodyMaterial,leg,0,-1.06,-.13,.15,.105,.27);
     legs.push(leg);
   }
   root.userData={arms,legs,meshes};
@@ -109,7 +109,7 @@ function canStand(x, z) {
 
 // Input/camera. Mouse cursor is hidden by CSS only during active gameplay.
 const keys = new Set();
-const options = { sensitivity: 1, fov: 70, drawDistance: 900, quality: 12, palette: 'mono' };
+const options = { sensitivity: 1, fov: 70, drawDistance: 900, quality: 15, palette: 'mono' };
 let yaw = -.38, pitch = .35, distance = 9, savedDistance = 9;
 let dragging = false, lastX = 0, lastY = 0, paused = false, quit = false;
 const canvas = asciiCanvas;
