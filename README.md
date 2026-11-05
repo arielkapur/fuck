@@ -4,18 +4,17 @@ A browser-based experimental **3D multiplayer world**, built with Three.js and a
 
 **Play:** https://fuck-world.onrender.com/
 
-## Latest changelog — v0.1.1 (2026-11-04)
+## Latest changelog — v0.1.2 (2026-11-05)
 
-**First Patch: Spawn Into Existence**
+**Patch 002 — ASCII-First**
 
-- **UI wiped:** tiny pixelated XYZ coordinates in the top-left, nothing else during gameplay.
-- **A/D unfucked**, camera zooms seamlessly from third-person to first-person, and the cursor hides over gameplay.
-- **ESC pause menu** with Inventory, Character, Skills, Settings, Resume and Quit. The first three are blank; Settings controls sensitivity, FOV, view distance and rendering resolution.
-- **Procedural pillars deleted.** The world is now flat dark-grey concrete.
-- **Pitch-black connected stick figures**, plus a concrete spawn building, a tree, and an identical NPC inside the building.
-- Added this changelog and an ongoing conversation/prompt archive.
+- Replaced WebGL rasterization with an actual **software 3D-to-ASCII renderer** (surface projection, character Z-buffer, lighting, glyph shading).
+- Replaced stick figures with **animated full-body humanoid forms** assembled from head, neck, torso, arms, hands, thighs, knees, calves and feet.
+- Preserved the concrete world, spawn building, tree, NPC, multiplayer, camera controls and ESC menu.
+- Added settings for **ASCII cell size** (8/10/12/15/18 px) and monochrome/colour modes.
+- Renderer module: `server/public/ascii.js`; the world is still controlled from `server/public/main.js`.
 
-See [CHANGELOG.md](CHANGELOG.md) for full patch notes and [prompts.txt](prompts.txt) for the design transcript and summarized earlier milestones.
+See [CHANGELOG.md](CHANGELOG.md) for all releases and [prompts.txt](prompts.txt) for the design-conversation archive.
 
 ## Controls
 
@@ -48,7 +47,7 @@ Render: **Web Service** · Root Directory `server` · Build `npm install` · Sta
 
 Enable auto-deploy on Render to redeploy the game whenever changes land on `main`. On free hosting, the service can sleep during inactivity.
 
-**Canonical client source:** `server/public/main.js`, `server/public/index.html`, `server/public/style.css`. Render serves those directly. The repository-root `index.html` points at the same client for local Python hosting and optional GitHub Pages. Legacy root-level `main.js` and `style.css` are not active in the game.
+**Canonical client source:** `server/public/main.js`, `server/public/ascii.js`, `server/public/index.html`, `server/public/style.css`. Render serves those directly. The repository-root `index.html` points at the same client for local Python hosting and optional GitHub Pages. Legacy root-level `main.js` and `style.css` are not active in the game.
 
 ## Current limitations
 
