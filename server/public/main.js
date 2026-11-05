@@ -6,6 +6,16 @@ import { AsciiRenderer } from './ascii.js';
 const HALF_WORLD = 4096;
 const canvasHost = document.getElementById('world');
 const coords = document.getElementById('coords');
+const tutorial = document.getElementById('tutorial');
+let tutorialEnabled = true, menuHintSeen = false;
+try { tutorialEnabled = localStorage.getItem('fuck:tutorial') !== 'off'; } catch {}
+function updateTutorial(){ if(tutorial) tutorial.hidden = !tutorialEnabled || menuHintSeen || paused || quit; }
+function toggleTutorial(){
+  tutorialEnabled=!tutorialEnabled;
+  if(tutorialEnabled) menuHintSeen=false;
+  try { localStorage.setItem('fuck:tutorial',tutorialEnabled?'on':'off'); } catch {}
+  updateTutorial();
+}
 const renderDebug = document.getElementById('render-debug');
 let showDebug = false;
 const menu = document.getElementById('menu');
@@ -80,7 +90,7 @@ const frameMaterial = concreteShadow;
 const colliders = [];
 function block(x, y, z, w, h, d, material = buildingMaterial, solid = true) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
-  mesh.position.set(x, y, z); scene.add(mesh); renderer.register(mesh,95,1900);
+  mesh.position.set(x, y, z); scene.add(mesh); renderer.register(mesh,95,1900); renderer.registerEdges(mesh);
   if (solid) colliders.push({ minX: x - w/2, maxX: x + w/2, minZ: z - d/2, maxZ: z + d/2 });
   return mesh;
 }
@@ -109,26 +119,27 @@ function canStand(x, z) {
                                    z + radius > c.minZ && z - radius < c.maxZ);
 }
 
-// Input/camera. Mouse cursor is hidden by CSS only during active gameplay.
+// Pointer-lock mouse-look: one click enters, browser keeps cursor centred.
 const keys = new Set();
 const options = { sensitivity: 1, fov: 70, drawDistance: 900, quality: 15, palette: 'mono' };
 renderer.setResolution(options.quality);
 let yaw = -.38, pitch = .35, distance = 9, savedDistance = 9;
-let dragging = false, lastX = 0, lastY = 0, paused = false, quit = false;
+let paused = false, quit = false;
 const canvas = asciiCanvas;
-canvas.addEventListener('pointerdown', e => {
-  if (paused || quit) return;
-  dragging = true; lastX = e.clientX; lastY = e.clientY;
-  canvas.setPointerCapture(e.pointerId);
+function mouseLook(dx,dy){
+  yaw -= dx * .003 * options.sensitivity;
+  pitch = THREE.MathUtils.clamp(pitch + dy * .003 * options.sensitivity, -.85, 1.25);
+}
+canvas.addEventListener('click', () => {
+  if (!paused && !quit && document.pointerLockElement !== canvas) canvas.requestPointerLock?.();
 });
-canvas.addEventListener('pointerup', () => dragging = false);
-canvas.addEventListener('pointercancel', () => dragging = false);
-canvas.addEventListener('pointermove', e => {
-  if (!dragging || paused || quit) return;
-  yaw -= (e.clientX - lastX) * .006 * options.sensitivity;
-  pitch = THREE.MathUtils.clamp(pitch + (e.clientY - lastY) * .005 * options.sensitivity, -.85, 1.25);
-  lastX = e.clientX; lastY = e.clientY;
+document.addEventListener('mousemove', e => {
+  if (document.pointerLockElement === canvas && !paused && !quit) mouseLook(e.movementX,e.movementY);
 });
+document.addEventListener('pointerlockchange', () => {
+  if (document.pointerLockElement !== canvas && !paused && !quit) openMenu();
+});
+function unlockPointer(){ if(document.pointerLockElement === canvas) document.exitPointerLock(); }
 canvas.addEventListener('wheel', e => {
   if (paused || quit) return;
   e.preventDefault();
@@ -136,7 +147,8 @@ canvas.addEventListener('wheel', e => {
   if (distance > 1.1) savedDistance = distance;
 }, { passive: false });
 addEventListener('keydown', e => {
-  if (e.key === 'F3') { e.preventDefault(); showDebug=!showDebug; if(renderDebug)renderDebug.hidden=!showDebug; return; }
+  if (e.code === 'F3') { e.preventDefault(); showDebug=!showDebug; if(renderDebug)renderDebug.hidden=!showDebug; return; }
+  if (e.code === 'KeyT' && !e.repeat) { e.preventDefault(); toggleTutorial(); return; }
   if (e.key === 'Escape') {
     e.preventDefault();
     if (quit) return;
@@ -144,8 +156,10 @@ addEventListener('keydown', e => {
     return;
   }
   if (paused || quit) return;
-  const k = e.key.toLowerCase(); keys.add(k);
-  if (k.startsWith('arrow') || k === ' ') e.preventDefault();
+  const k = e.key.toLowerCase();
+  keys.add(k);
+  if (k.startsWith('arrow') || e.code === 'Space') e.preventDefault();
+  if (e.code === 'Space' && !e.repeat && grounded) { velocityY = 7.7; grounded = false; }
 });
 addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
 addEventListener('blur', () => keys.clear());
@@ -202,11 +216,18 @@ function renderMenu(page = 'main') {
   }
   menuBody.innerHTML = '<div class="empty-panel">NOTHING HERE YET.</div>' + menuButtons([['Back', 'main']]);
 }
-function openMenu() { paused = true; dragging = false; keys.clear(); menu.hidden = false; renderMenu(); }
-function closeMenu() { paused = false; menu.hidden = true; keys.clear(); }
+function openMenu() {
+  paused=true; menuHintSeen=true; keys.clear(); menu.hidden=false; updateTutorial();
+  unlockPointer(); renderMenu();
+}
+function closeMenu() {
+  paused=false; menu.hidden=true; keys.clear(); updateTutorial();
+  // Must be triggered from the user's menu click or ESC key to reacquire.
+  canvas.requestPointerLock?.();
+}
 function leaveWorld() {
   quit = true; paused = false; menu.hidden = true; titleScreen.hidden = false;
-  keys.clear(); socket?.close(); socket = null; coords.hidden = true;
+  keys.clear(); unlockPointer(); socket?.close(); socket = null; coords.hidden = true; updateTutorial();
 }
 menuBody.addEventListener('click', e => {
   const action = e.target.closest('button')?.dataset.action;
@@ -217,7 +238,7 @@ menuBody.addEventListener('click', e => {
 });
 titleScreen.querySelector('button').addEventListener('click', () => {
   quit = false; titleScreen.hidden = true; coords.hidden = false;
-  player.position.set(0, 0, 0); connect();
+  player.position.set(0, 0, 0); velocityY=0; grounded=true; updateTutorial(); connect();
 });
 
 // Networking: Render is the authoritative shared room only for player coordinates.
@@ -239,7 +260,7 @@ function connect() {
       let figure = peers.get(p.id);
       if (!figure) { figure = makeHuman(); peers.set(p.id, figure); scene.add(figure); }
       const ox = figure.position.x, oz = figure.position.z;
-      figure.position.set(p.x, 0, p.z);
+      figure.position.set(p.x, Number.isFinite(p.y)?p.y:0, p.z);
       if (Math.hypot(p.x - ox, p.z - oz) > .02) figure.rotation.y = Math.atan2(p.x - ox, p.z - oz);
     }
     for (const [id, figure] of peers) if (!seen.has(id)) { removeHuman(figure); peers.delete(id); }
@@ -254,6 +275,8 @@ function connect() {
 connect();
 
 let lastTime = performance.now(), lastSent = 0, step = 0;
+let velocityY = 0, grounded = true;
+updateTutorial();
 function resize() {
   renderer.resize();
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
@@ -278,7 +301,12 @@ function frame(now) {
       player.rotation.y = Math.atan2(mx, mz);
       step += dt * speed * 1.8;
     }
-    const swing = moving ? Math.sin(step) * .48 : 0;
+    if (!grounded) {
+      velocityY -= 19 * dt;
+      player.position.y += velocityY * dt;
+      if(player.position.y <= 0){player.position.y=0;velocityY=0;grounded=true;}
+    }
+    const swing = moving && grounded ? Math.sin(step) * .48 : 0;
     for (let i = 0; i < 2; i++) {
       player.userData.legs[i].rotation.x = (i ? 1 : -1) * swing;
       player.userData.arms[i].rotation.x = (i ? -1 : 1) * swing * .7;
@@ -300,7 +328,7 @@ function frame(now) {
   }
 
   if (!quit && socket?.readyState === WebSocket.OPEN && now - lastSent > 70) {
-    socket.send(JSON.stringify({ type: 'move', x: player.position.x, z: player.position.z }));
+    socket.send(JSON.stringify({ type: 'move', x: player.position.x, y: player.position.y, z: player.position.z }));
     lastSent = now;
   }
   coords.textContent = `X ${player.position.x.toFixed(1)}  Y ${player.position.y.toFixed(1)}  Z ${player.position.z.toFixed(1)}`;
