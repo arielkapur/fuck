@@ -30,7 +30,7 @@ const http=createServer(async(req,res)=>{
 const wss=new WebSocketServer({server:http});
 wss.on('connection',ws=>{
   const id=randomUUID();
-  players.set(id,{id,x:0,z:0});
+  players.set(id,{id,x:0,y:0,z:0});
   ws.send(JSON.stringify({type:'welcome',id}));
   ws.on('message',raw=>{
     if(raw.length>1024)return;
@@ -38,6 +38,7 @@ wss.on('connection',ws=>{
     if(m?.type!=='move'||!Number.isFinite(m.x)||!Number.isFinite(m.z))return;
     const player=players.get(id);
     if(player){
+      if (Number.isFinite(m.y)) player.y=Math.max(0,Math.min(30,m.y));
       player.x=Math.max(-4091,Math.min(4091,m.x));
       player.z=Math.max(-4091,Math.min(4091,m.z));
     }
