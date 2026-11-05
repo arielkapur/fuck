@@ -2,6 +2,14 @@
 
 All notable updates to **FUCK / World 001** are recorded here. Newest first.
 
+## [0.1.2a] — 2026-11-05 — Patch 002 Hotfix: Grey-Screen Diagnostics
+
+- Corrected ASCII grid sizing to measure the browser's actual monospace glyph width.
+- Added a startup status panel and on-screen error reporting for module and render failures.
+- Guarded the ASCII draw loop, so a renderer exception is displayed rather than silently leaving an empty screen.
+- Updated both Render's game page and the repository-root local entrypoint.
+- **Verification:** Code pushed; the cause of the reported grey screen is not yet confirmed without browser error output.
+
 ## [0.1.2] — 2026-11-05 — Patch 002: ASCII-First
 
 ### Rendering
