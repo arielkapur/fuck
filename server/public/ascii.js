@@ -25,7 +25,8 @@ const PALETTE=[
   [136,96,66],    // 6 bark
   [64,176,110],   // 7 foliage
   [223,226,236],  // 8 player silhouettes
-  [245,241,208]   // 9 stars
+  [245,241,208],  // 9 stars
+  [255,145,44]   // 10 fire
 ];
 function samplesFor(mesh,density,limit) {
   const geo=mesh.geometry,pos=geo.getAttribute('position'),norm=geo.getAttribute('normal');
