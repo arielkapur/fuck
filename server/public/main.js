@@ -168,7 +168,7 @@ document.addEventListener('mousemove', e => {
   if (document.pointerLockElement === canvas && !paused && !quit) mouseLook(e.movementX,e.movementY);
 });
 document.addEventListener('pointerlockchange', () => {
-  if (document.pointerLockElement !== canvas && !paused && !quit) openMenu();
+  if (document.pointerLockElement !== canvas && !paused && !quit) openMenu('inventory',true);
 });
 function unlockPointer(){ if(document.pointerLockElement === canvas) document.exitPointerLock(); }
 canvas.addEventListener('wheel', e => {
