@@ -2,6 +2,14 @@
 
 All notable updates to **FUCK / World 001** are recorded here. Newest first.
 
+## [0.1.2b] — 2026-11-05 — Visibility Fix
+
+- Fixed mismatched depth comparisons between the analytic ground and projected 3D surfaces.
+- Made the monochrome ASCII world readable: dark/sparse concrete glyphs, bright building/character geometry, and distinct sky tones.
+- Added **F3 renderer diagnostics** showing character-grid dimensions, registered meshes, projected visible samples and camera position.
+- Preserved existing multiplayer, menus, movement, humanoids and camera controls.
+- A browser visual confirmation is still required.
+
 ## [0.1.2a] — 2026-11-05 — Patch 002 Hotfix: Grey-Screen Diagnostics
 
 - Corrected ASCII grid sizing to measure the browser's actual monospace glyph width.
