@@ -110,6 +110,7 @@ function canStand(x, z) {
 // Input/camera. Mouse cursor is hidden by CSS only during active gameplay.
 const keys = new Set();
 const options = { sensitivity: 1, fov: 70, drawDistance: 900, quality: 15, palette: 'mono' };
+renderer.setResolution(options.quality);
 let yaw = -.38, pitch = .35, distance = 9, savedDistance = 9;
 let dragging = false, lastX = 0, lastY = 0, paused = false, quit = false;
 const canvas = asciiCanvas;
