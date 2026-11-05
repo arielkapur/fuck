@@ -27,3 +27,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#111;color:
 .keycap{display:inline-block;min-width:22px;padding:5px 6px;border:1px solid #bdb8a4;border-bottom:3px solid #bdb8a4;border-radius:3px;background:#212327;color:#ffeac6;font:inherit;text-shadow:none}
 @keyframes tutorial-pulse{0%,100%{opacity:.46;filter:brightness(.8)}50%{opacity:1;filter:brightness(1.28)}}
 @media(prefers-reduced-motion:reduce){.tutorial-main{animation:none}}
+
+/* Miniature top-down terrain view, anchored beneath XYZ coordinates. */
+#minimap{position:fixed;left:12px;top:39px;z-index:3;width:168px;height:168px;background:#0b191b;border:1px solid #779b95;box-shadow:0 2px 18px #0009;pointer-events:none;image-rendering:pixelated}
+@media(max-width:500px){#minimap{left:8px;top:31px;width:132px;height:132px}}
