@@ -1,11 +1,15 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
 import { AsciiRenderer } from './ascii.js';
+import { terrainHeight, treeAt, FOREST_CELL } from './terrain.js';
+import { createForest } from './forest.js';
 
 // FUCK / World 001 · Patch 002: ASCII-first world. The scene and input stay client-side.
 // The existing WebSocket server relays positions; it does not render objects.
 const HALF_WORLD = 4096;
 const canvasHost = document.getElementById('world');
 const coords = document.getElementById('coords');
+const minimap = document.getElementById('minimap');
+const minimapCtx = minimap.getContext('2d');
 const tutorial = document.getElementById('tutorial');
 let tutorialEnabled = true, menuHintSeen = false;
 try { tutorialEnabled = localStorage.getItem('fuck:tutorial') !== 'off'; } catch {}
@@ -45,6 +49,7 @@ function makeHuman() {
   const place=(geo,material,parent,x,y,z,sx,sy,sz)=>{
     const mesh=new THREE.Mesh(geo,material);
     mesh.position.set(x,y,z);mesh.scale.set(sx,sy,sz);
+    mesh.userData.asciiType=8;
     parent.add(mesh);meshes.push(mesh);return mesh;
   };
   // Pelvis, waist, ribcage, shoulder silhouette, neck, skull, nose and ears.
@@ -90,7 +95,8 @@ const frameMaterial = concreteShadow;
 const colliders = [];
 function block(x, y, z, w, h, d, material = buildingMaterial, solid = true) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
-  mesh.position.set(x, y, z); scene.add(mesh); renderer.register(mesh,95,1900); renderer.registerEdges(mesh);
+  mesh.position.set(x, y, z);mesh.userData.asciiType=4;
+  scene.add(mesh); renderer.register(mesh,95,1900); renderer.registerEdges(mesh);
   if (solid) colliders.push({ minX: x - w/2, maxX: x + w/2, minZ: z - d/2, maxZ: z + d/2 });
   return mesh;
 }
@@ -108,10 +114,14 @@ const npc = makeHuman(); npc.position.set(BX, .12, BZ - 1.3); npc.rotation.y = M
 
 // One intentionally simple tree beside the building.
 const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.32, .45, 4, 8), new THREE.MeshLambertMaterial({ color: 0x735647 }));
+trunk.userData.asciiType=6;
 trunk.position.set(BX + 8, 2, BZ + 1); scene.add(trunk); renderer.register(trunk,130,1200);
 const leaves = new THREE.Mesh(new THREE.ConeGeometry(3.0, 7, 8), new THREE.MeshLambertMaterial({ color: 0x43664e }));
+leaves.userData.asciiType=7;
 leaves.position.set(BX + 8, 6, BZ + 1); scene.add(leaves); renderer.register(leaves,145,1600);
 colliders.push({ minX: BX + 7.4, maxX: BX + 8.6, minZ: BZ + .4, maxZ: BZ + 1.6 });
+const forest = createForest(scene, renderer);
+forest.update(0, 0);
 function canStand(x, z) {
   if (Math.abs(x) >= HALF_WORLD - 1 || Math.abs(z) >= HALF_WORLD - 1) return false;
   const radius = .27;
@@ -121,7 +131,7 @@ function canStand(x, z) {
 
 // Pointer-lock mouse-look: one click enters, browser keeps cursor centred.
 const keys = new Set();
-const options = { sensitivity: 1, fov: 70, drawDistance: 900, quality: 15, palette: 'mono' };
+const options = { sensitivity: 1, fov: 70, drawDistance: 900, quality: 10.5, palette: 'color' };
 renderer.setResolution(options.quality);
 let yaw = -.38, pitch = .35, distance = 9, savedDistance = 9;
 let paused = false, quit = false;
@@ -190,12 +200,12 @@ function renderMenu(page = 'main') {
         <input id="draw-distance" type="range" min="250" max="1500" step="50" value="${options.drawDistance}">
       </label>
       <label>ASCII CHARACTER SIZE <select id="quality">
-        <option value="8">DENSE / 8 PX</option><option value="10">FINE / 10 PX</option>
-        <option value="12">STANDARD / 12 PX</option><option value="15">PERFORMANCE / 15 PX</option>
-        <option value="18">COARSE / 18 PX</option>
+        <option value="7.5">ULTRA / 7.5 PX</option><option value="9">DENSE / 9 PX</option>
+        <option value="10.5">STANDARD 2X / 10.5 PX</option><option value="12">BALANCED / 12 PX</option>
+        <option value="15">CLASSIC / 15 PX</option><option value="18">PERFORMANCE / 18 PX</option>
       </select></label>
       <label>ASCII PALETTE <select id="palette">
-        <option value="mono">MONOCHROME</option><option value="color">COLOURED</option>
+        <option value="color">COLOURED</option><option value="mono">MONOCHROME</option>
       </select></label>
       ${menuButtons([['Back','main']])}`;
     menuBody.querySelector('#quality').value = String(options.quality);
@@ -238,7 +248,7 @@ menuBody.addEventListener('click', e => {
 });
 titleScreen.querySelector('button').addEventListener('click', () => {
   quit = false; titleScreen.hidden = true; coords.hidden = false;
-  player.position.set(0, 0, 0); velocityY=0; grounded=true; updateTutorial(); connect();
+  player.position.set(0, terrainHeight(0,0), 0); velocityY=0; grounded=true; updateTutorial(); connect();
 });
 
 // Networking: Render is the authoritative shared room only for player coordinates.
@@ -274,7 +284,43 @@ function connect() {
 }
 connect();
 
-let lastTime = performance.now(), lastSent = 0, step = 0;
+let lastTime = performance.now(), lastSent = 0, step = 0, lastMap = 0;
+function renderMinimap(){
+  const c=minimapCtx,w=minimap.width,h=minimap.height;
+  const range=105,scale=w/(range*2);
+  const centerX=player.position.x,centerZ=player.position.z;
+  c.fillStyle='#0a1820';c.fillRect(0,0,w,h);
+  // Altitude shading on a small coarse grid is independent from the 3D renderer.
+  const tiles=22,tile=w/tiles;
+  for(let iz=0;iz<tiles;iz++)for(let ix=0;ix<tiles;ix++){
+    const x=centerX+(ix+.5-tiles/2)*range*2/tiles;
+    const z=centerZ+(iz+.5-tiles/2)*range*2/tiles;
+    const height=terrainHeight(x,z);
+    const green=Math.max(32,Math.min(87,68+height*3));
+    c.fillStyle='rgb('+Math.round(30+height*1.2)+','+Math.round(green)+','+Math.round(54+height*1.3)+')';
+    c.fillRect(ix*tile,iz*tile,Math.ceil(tile),Math.ceil(tile));
+  }
+  // Draw stable tree candidates; no trees inside the spawn clearing.
+  const minX=Math.floor((centerX-range)/FOREST_CELL),maxX=Math.ceil((centerX+range)/FOREST_CELL);
+  const minZ=Math.floor((centerZ-range)/FOREST_CELL),maxZ=Math.ceil((centerZ+range)/FOREST_CELL);
+  c.fillStyle='#a0d5a2';
+  for(let z=minZ;z<=maxZ;z++)for(let x=minX;x<=maxX;x++){
+    const t=treeAt(x,z);if(!t)continue;
+    const px=w/2+(t.x-centerX)*scale,py=h/2+(t.z-centerZ)*scale;
+    if(px<2||py<2||px>w-2||py>h-2)continue;
+    c.fillRect(px-1,py-1,2,2);
+  }
+  const bx=w/2+(8-centerX)*scale,bz=h/2+(-12-centerZ)*scale;
+  c.fillStyle='#d8dde2';c.fillRect(bx-4*scale,bz-4*scale,8*scale,8*scale);
+  for(const other of peers.values()){
+    const x=w/2+(other.position.x-centerX)*scale,y=h/2+(other.position.z-centerZ)*scale;
+    c.fillStyle='#f0bb69';c.beginPath();c.arc(x,y,2.9,0,Math.PI*2);c.fill();
+  }
+  c.save();c.translate(w/2,h/2);c.rotate(-yaw);
+  c.fillStyle='#ffda77';c.beginPath();c.moveTo(0,-7);c.lineTo(-5,5);c.lineTo(5,5);c.closePath();c.fill();
+  c.restore();
+  c.strokeStyle='#9fb9a0';c.strokeRect(.5,.5,w-1,h-1);
+}
 let velocityY = 0, grounded = true;
 updateTutorial();
 function resize() {
@@ -301,11 +347,15 @@ function frame(now) {
       player.rotation.y = Math.atan2(mx, mz);
       step += dt * speed * 1.8;
     }
+    const groundY=terrainHeight(player.position.x, player.position.z);
     if (!grounded) {
       velocityY -= 19 * dt;
       player.position.y += velocityY * dt;
-      if(player.position.y <= 0){player.position.y=0;velocityY=0;grounded=true;}
+      if(player.position.y <= groundY){player.position.y=groundY;velocityY=0;grounded=true;}
+    } else {
+      player.position.y=groundY;
     }
+    forest.update(player.position.x, player.position.z);
     const swing = moving && grounded ? Math.sin(step) * .48 : 0;
     for (let i = 0; i < 2; i++) {
       player.userData.legs[i].rotation.x = (i ? 1 : -1) * swing;
@@ -332,6 +382,7 @@ function frame(now) {
     lastSent = now;
   }
   coords.textContent = `X ${player.position.x.toFixed(1)}  Y ${player.position.y.toFixed(1)}  Z ${player.position.z.toFixed(1)}`;
+  if(now-lastMap>160){renderMinimap();lastMap=now;}
   try {
     renderer.draw();
     if(renderDebug && showDebug)renderDebug.textContent =
