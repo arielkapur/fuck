@@ -13,6 +13,7 @@ const coords = document.getElementById('coords');
 const minimap = document.getElementById('minimap');
 const mapCanvas=document.getElementById('world-map');
 const cartography=createCartography();
+addEventListener('pagehide',()=>cartography.save());
 let mapSpan=420, lastExplore=0;
 let activeTab='inventory', punchStarted=-100;
 const tutorial = document.getElementById('tutorial');
