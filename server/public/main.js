@@ -290,7 +290,7 @@ function connect() {
 }
 connect();
 
-let lastTime = performance.now(), lastSent = 0, step = 0, lastMap = 0;
+let lastTime = performance.now(), lastSent = 0, step = 0, lastMap = 0, lastDraw = 0;
 function renderMinimap(){
   const c=minimapCtx,w=minimap.width,h=minimap.height;
   const range=105,scale=w/(range*2);
@@ -389,6 +389,9 @@ function frame(now) {
   }
   coords.textContent = `X ${player.position.x.toFixed(1)}  Y ${player.position.y.toFixed(1)}  Z ${player.position.z.toFixed(1)}`;
   if(now-lastMap>160){renderMinimap();lastMap=now;}
+  // Physics/input update at display refresh rate, expensive glyph raster at ~30 FPS.
+  if(now-lastDraw<32)return;
+  lastDraw=now;
   try {
     renderer.draw();
     if(renderDebug && showDebug)renderDebug.textContent =
