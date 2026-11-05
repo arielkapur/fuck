@@ -4,20 +4,25 @@ A browser-based experimental **3D multiplayer world**, built with Three.js and a
 
 **Play:** https://fuck-world.onrender.com/
 
-## Latest changelog — v0.1.2b (2026-11-05)
+## Latest changelog — v0.1.3 (2026-11-05)
 
-**Patch 002 — visibility hotfix**
+**Patch 2.1 — The Sky Has Eyes**
 
-- Corrected inconsistent ground/geometry depth comparisons.
-- Increased contrast between concrete, characters, building and sky.
-- Press **F3** to inspect ASCII rendering statistics (grid, surface samples, camera) when troubleshooting.
-- See [CHANGELOG.md](CHANGELOG.md) for full history.
+- Depth-aware **ASCII building outlines** now accentuate wall corners and the doorway.
+- A **3D-directional ASCII starfield** appears in unobstructed sky.
+- **Space to jump**, including multiplayer height replication.
+- **Pointer-lock mouse look:** click the game once, move camera without holding LMB, ESC releases the cursor and opens the menu.
+- **Pulsing tutorial:** gold ESC prompt, boxed T shortcut; first ESC dismisses it, T toggles it, preference stored locally.
+
+See [CHANGELOG.md](CHANGELOG.md) for full patch notes and [prompts.txt](prompts.txt) for the prompt archive.
 
 ## Controls
 
 - **WASD / arrows**: move (A left, D right)
 - **Shift**: sprint
-- **Drag**: rotate camera
+- **Click once**: lock mouse and rotate camera without holding a button
+- **Space**: jump
+- **T**: toggle tutorial prompts
 - **Scroll**: zoom, including into first-person
 - **Escape**: pause/resume, open settings and submenus
 - **Quit**: disconnect from multiplayer and return to title screen
