@@ -79,6 +79,7 @@ export class AsciiRenderer {
     this.r=new Uint8Array(this.depth.length);
     this.g=new Uint8Array(this.depth.length);
     this.b=new Uint8Array(this.depth.length);
+    this.kind=new Uint8Array(this.depth.length);
     this.ctx.font=this.cellHeight+'px monospace';
     // Measure actual glyph width instead of assuming that .62 * font size
     // is what the browser's monospace font really uses.
@@ -87,14 +88,14 @@ export class AsciiRenderer {
     this.rows=Math.max(1,Math.floor(h/this.cellHeight));
     const n=this.cols*this.rows;
     this.depth=new Float32Array(n);this.symbol=new Uint8Array(n);
-    this.r=new Uint8Array(n);this.g=new Uint8Array(n);this.b=new Uint8Array(n);
+    this.r=new Uint8Array(n);this.g=new Uint8Array(n);this.b=new Uint8Array(n);this.kind=new Uint8Array(n);
     this.ctx.textBaseline='top';
     this.ctx.fillStyle='#0a131b';
     this.ctx.fillRect(0,0,w,h);
   }
   draw() {
-    const {ctx,cols,rows,depth,symbol,r,g,b}=this;
-    depth.fill(Infinity);symbol.fill(0);r.fill(0);g.fill(0);b.fill(0);
+    const {ctx,cols,rows,depth,symbol,r,g,b,kind}=this;
+    depth.fill(Infinity);symbol.fill(0);r.fill(0);g.fill(0);b.fill(0);kind.fill(0);
     const cam=this.camera;
     cam.updateMatrixWorld();
     this.scene.updateMatrixWorld(true);
@@ -116,10 +117,12 @@ export class AsciiRenderer {
       const gx=cx+V.x*t,gz=cz+V.z*t;
       if(Math.abs(gx)>4096||Math.abs(gz)>4096)continue;
       const k=y*cols+x;
-      depth[k]=t;
+      // Mesh depths use eye-space Z, so the ground must too.
+      depth[k]=t/Math.sqrt(1+ndcX*ndcX+ndcY*ndcY);
+      kind[k]=1;
       // Subtle concrete grain determined by world position, not a screen filter.
       const grain=(Math.sin(gx*2.15)*Math.cos(gz*1.73)+1)*.5;
-      const luminance=clamp(.27+grain*.11-(t/cam.far)*.06,0,1);
+      const luminance=clamp(.08+grain*.11-(t/cam.far)*.03,0,1);
       symbol[k]=Math.floor(luminance*(GLYPHS.length-1));
       const shade=Math.round(100+grain*17);
       r[k]=shade;g[k]=shade;b[k]=shade;
@@ -150,6 +153,7 @@ export class AsciiRenderer {
         const darkness=1-Math.max(baseR,baseG,baseB);
         const density=clamp(illumination*.58+.2+darkness*.22,0,1);
         depth[k]=z;
+        kind[k]=2;
         visibleSamples++;
         symbol[k]=Math.max(1,Math.floor(density*(GLYPHS.length-1)));
         const factor=.42+illumination*.58;
@@ -160,16 +164,29 @@ export class AsciiRenderer {
     }
 
     this.visibleSamples=visibleSamples;
+    this.meshCount=this.meshes.size;
     ctx.fillStyle='#0a131b';ctx.fillRect(0,0,this.width,this.height);
     if(this.mode==='mono'){
-      ctx.fillStyle='#d0dae0';
-      for(let y=0;y<rows;y++){
-        let line='';
-        for(let x=0;x<cols;x++){
-          const k=y*cols+x;
-          line+=Number.isFinite(depth[k])?GLYPHS[symbol[k]]:((x*17+y*13)%43===0?'·':' ');
+      // Separate sky, concrete, and solid geometry into high-contrast passes.
+      // Drawing them all in the same colour made the world look uniformly grey.
+      const bands=[
+        {kind:0,color:'#5b7c8f'},
+        {kind:1,color:'#53606a'},
+        {kind:2,color:'#e7eff4'}
+      ];
+      for(const band of bands){
+        ctx.fillStyle=band.color;
+        for(let y=0;y<rows;y++){
+          let line='';
+          for(let x=0;x<cols;x++){
+            const k=y*cols+x;
+            if(kind[k]!==band.kind){line+=' ';continue;}
+            line+=band.kind===0?((x*17+y*13)%31===0?'.':' '):
+              band.kind===1?GLYPHS[Math.max(1,symbol[k])]:
+              GLYPHS[Math.max(13,symbol[k])];
+          }
+          ctx.fillText(line,0,y*this.cellHeight);
         }
-        ctx.fillText(line,0,y*this.cellHeight);
       }
       this.frame++;return;
     }
