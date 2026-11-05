@@ -6,6 +6,8 @@ import { AsciiRenderer } from './ascii.js';
 const HALF_WORLD = 4096;
 const canvasHost = document.getElementById('world');
 const coords = document.getElementById('coords');
+const renderDebug = document.getElementById('render-debug');
+let showDebug = false;
 const menu = document.getElementById('menu');
 const menuPanel = document.getElementById('menu-panel');
 const menuTitle = document.getElementById('menu-title');
@@ -134,6 +136,7 @@ canvas.addEventListener('wheel', e => {
   if (distance > 1.1) savedDistance = distance;
 }, { passive: false });
 addEventListener('keydown', e => {
+  if (e.key === 'F3') { e.preventDefault(); showDebug=!showDebug; if(renderDebug)renderDebug.hidden=!showDebug; return; }
   if (e.key === 'Escape') {
     e.preventDefault();
     if (quit) return;
@@ -303,6 +306,11 @@ function frame(now) {
   coords.textContent = `X ${player.position.x.toFixed(1)}  Y ${player.position.y.toFixed(1)}  Z ${player.position.z.toFixed(1)}`;
   try {
     renderer.draw();
+    if(renderDebug && showDebug)renderDebug.textContent =
+      'ASCII '+renderer.cols+'x'+renderer.rows+
+      ' | registered meshes '+renderer.meshCount+
+      ' | visible surface samples '+renderer.visibleSamples+
+      ' | camera '+camera.position.x.toFixed(1)+','+camera.position.y.toFixed(1)+','+camera.position.z.toFixed(1);
     const boot=document.getElementById('boot-status');
     if(boot)boot.hidden=true;
   } catch(error) {
