@@ -138,3 +138,34 @@ ASSISTANT (user-visible progress):
 "The jump and free-look controls are in, along with highlighted wall edges and stars that move correctly as the camera turns. Next I’m finishing the tutorial overlay and syncing jump height between players."
 
 ASSISTANT (implementation): Added geometric ASCII outlines, sky stars projected from fixed celestial directions, pointer-lock camera and ESC pause, a Space jump with gravity and networked Y, plus a pulsing pixel-font tutorial and T toggle with stored preference. Final browser verification remains with playtesting.
+
+2026-11-05 — PATCH 2.2 — USER PROMPT (VERBATIM)
+----------------------------------------------
+USER:
+Patch 2.2
+
+**World Changes**
+
+> Let's procedurally generate some woods surrounding the player. Add a separate minimap as a UI element, something simple, in the top Left beneath the position display.
+>
+> Add some variation in the Z-plane, use the most computationally efficient noise available to form some variation which reflects real-life terrain.
+>
+> The player spawns into a clearing in these procedurally generated woods
+
+**Rendering changes**
+
+> Increase the ASCII pixel density so there's twice the amount of characters on the screen. We need higher resoltuion.
+>
+> Add a splash of colour and if possible a great deal of contrast pre-ASCII to bring out the edges and structure.
+>
+> For the ASCII itself, enable all UTF characters to achieve the colours we want - like chinese and hindi characters as well if possible, not just english and variations on romanised text.
+
+Let's try that out first.
+
+ASSISTANT (user-visible progress):
+"I’ll treat the terrain height as the vertical Y axis (Three.js uses Y-up), with a flat clearing around spawn. I’ll also make the forest deterministic, so every player sees the same trees, and keep the new ASCII character set configurable rather than forcing wide glyphs that might wreck alignment."
+"The terrain and tree-placement modules are in GitHub. I’m replacing the old glyph drawer now: higher-density character cells, stronger colour separation for terrain/trees/buildings, and a Unicode glyph palette that includes CJK and Devanagari characters where the browser font supports them."
+"The denser ASCII renderer is in. I’ve kept the terrain and forest independent of the renderer, so we can change the look without breaking world generation again. I’m wiring walking/jumping onto the hills and adding the minimap now."
+"The playable pieces are wired up: hills affect player height, trees are generated in a reusable pool, and the minimap shows terrain, trees, the building and nearby players. I spotted one palette assignment I’m correcting before the final checks, so trees actually render green rather than concrete-grey."
+
+ASSISTANT (implementation): Added terrain.js and forest.js, replaced the ASCII renderer with a density-adjustable high-contrast coloured glyph atlas, updated terrain-height movement and jump physics, and added a minimap. Included selected Unicode glyphs rather than promising every codepoint. Updated the Render module routes, README and CHANGELOG. Browser playtesting still required.
