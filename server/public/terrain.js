@@ -30,6 +30,6 @@ export function treeAt(cellX,cellZ){
   if(hash(cellX,cellZ,70)<.24)return null;
   const x=(cellX+(.18+hash(cellX,cellZ,71)*.64))*FOREST_CELL;
   const z=(cellZ+(.18+hash(cellX,cellZ,72)*.64))*FOREST_CELL;
-  if(Math.hypot(x-4,z+6)<CLEARING_RADIUS || Math.abs(x)>WORLD_HALF-9 || Math.abs(z)>WORLD_HALF-9)return null;
+  if(Math.hypot(x-4,z+6)<CLEARING_RADIUS || Math.hypot(x+69,z+39)<19 || Math.abs(x)>WORLD_HALF-9 || Math.abs(z)>WORLD_HALF-9)return null;
   return {x,z,y:terrainHeight(x,z),height:6+hash(cellX,cellZ,73)*6.2,scale:.75+hash(cellX,cellZ,74)*.65};
 }
