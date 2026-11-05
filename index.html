@@ -8,6 +8,15 @@
 </head>
 <body>
   <div id="world"></div>
+  <div id="boot-status" role="status" style="position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);color:#fff;background:#1b2024;padding:15px 20px;font:13px monospace;z-index:4">INITIALISING ASCII WORLD...</div>
+  <script>
+  function showBootFailure(message) {
+    const el=document.getElementById('boot-status');
+    if(el){el.style.background='#421d20';el.textContent='STARTUP ERROR: '+message;}
+  }
+  window.addEventListener('error',e=>showBootFailure(e.message||'Script could not load'));
+  window.addEventListener('unhandledrejection',e=>showBootFailure(e.reason?.message||String(e.reason)));
+  </script>
   <div id="coords" aria-live="off">X 0.0  Y 0.0  Z 0.0</div>
   <div id="menu" class="overlay" hidden>
     <section id="menu-panel" class="panel" aria-label="Pause menu">
