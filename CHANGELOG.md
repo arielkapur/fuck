@@ -2,6 +2,27 @@
 
 All notable updates to **FUCK / World 001** are recorded here. Newest first.
 
+## [0.1.4] — 2026-11-05 — Patch 2.2: Into the Woods
+
+### World & Environment
+- **Spawn in a woodland clearing.** A deterministic forest of low-poly trees surrounds the original building, NPC and spawn area; the clearing stays level and free of trees.
+- **Terrain has elevation.** Lightweight, seeded three-octave value noise shapes rolling hills; elevation blends gently into a flat clearing. Three.js uses **Y as the vertical axis** (Z remains horizontal/map depth).
+- **Streaming without object leaks.** A fixed pool of 145 trees repositions as players travel, keeping the enormous world explorable without loading every tree simultaneously.
+- **Minimap added.** A compact, pixel-styled map below XYZ coordinates shows approximate local elevation, woodland, nearby players, the building and the player's facing.
+- **Terrain-aware movement.** Characters follow the ground when walking and land at the actual terrain height after jumping. Forest trunks have simple collision.
+
+### Rendering
+- **Roughly twice the character count by default.** ASCII cell height reduced from 15 to 10.5 pixels (~2.04× screen cells at the same viewport). Adjustable from 7.5 to 18px in Settings.
+- **Colour and contrast.** The ASCII renderer now uses distinct palettes for concrete, grass, soil, buildings, highlighted edges, bark, foliage, players and stars, with four lighting levels.
+- **Glyph atlas for speed.** Characters are cached into a canvas atlas and composited into the grid instead of calling font rasterisation repeatedly for each screen character.
+- **Unicode experimentation.** Added selected CJK, Japanese, Devanagari and block-shading glyphs alongside Latin ASCII. Every glyph is constrained to a single cell. Actual appearance depends on the browser's available fonts; supporting literally every Unicode character is impractical and not guaranteed.
+- **No postprocessing filter.** Terrain uses screen-cell ray-heightfield intersections and world objects use 3D surface projections with a shared depth buffer.
+
+### Known limitations
+- Trees and terrain are deterministic client-side geometry; the server still only replicates player position.
+- High-resolution ASCII rendering is CPU-intensive. Lower character density in Settings if performance suffers.
+- Live browser performance and appearance have not yet been independently verified.
+
 ## [0.1.3] — 2026-11-05 — Patch 2.1: The Sky Has Eyes
 
 ### World & Rendering
