@@ -8,9 +8,9 @@ import {randomUUID} from 'node:crypto';
 const port=Number(process.env.PORT)||3001;
 const publicDir=join(dirname(fileURLToPath(import.meta.url)),'public');
 const files=new Map([
-  ['/','index.html'],['/index.html','index.html'],['/main.js','main.js'],['/ascii.js','ascii.js'],['/terrain.js','terrain.js'],['/forest.js','forest.js'],['/style.css','style.css']
+  ['/','index.html'],['/index.html','index.html'],['/main.js','main.js'],['/ascii.js','ascii.js'],['/terrain.js','terrain.js'],['/forest.js','forest.js'],['/camp.js','camp.js'],['/cartography.js','cartography.js'],['/style.css','style.css']
 ]);
-const mime=new Map([['index.html','text/html; charset=utf-8'],['main.js','text/javascript; charset=utf-8'],['ascii.js','text/javascript; charset=utf-8'],['terrain.js','text/javascript; charset=utf-8'],['forest.js','text/javascript; charset=utf-8'],['style.css','text/css; charset=utf-8']]);
+const mime=new Map([['index.html','text/html; charset=utf-8'],['main.js','text/javascript; charset=utf-8'],['ascii.js','text/javascript; charset=utf-8'],['terrain.js','text/javascript; charset=utf-8'],['forest.js','text/javascript; charset=utf-8'],['camp.js','text/javascript; charset=utf-8'],['cartography.js','text/javascript; charset=utf-8'],['style.css','text/css; charset=utf-8']]);
 const players=new Map();
 const http=createServer(async(req,res)=>{
   const path=(req.url||'/').split('?')[0];
