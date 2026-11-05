@@ -136,7 +136,8 @@ export class AsciiRenderer {
         N.set(s[3],s[4],s[5]).applyMatrix3(normalMatrix).normalize();
         const illumination=clamp(.24+Math.max(0,N.dot(light))*.76,0,1);
         // boost legibility so black characters remain distinct on concrete
-        const density=clamp(illumination*.8+.14,0,1);
+        const darkness=1-Math.max(baseR,baseG,baseB);
+        const density=clamp(illumination*.58+.2+darkness*.22,0,1);
         depth[k]=z;
         symbol[k]=Math.max(1,Math.floor(density*(GLYPHS.length-1)));
         const factor=.42+illumination*.58;
@@ -147,6 +148,18 @@ export class AsciiRenderer {
     }
 
     ctx.fillStyle='#0a131b';ctx.fillRect(0,0,this.width,this.height);
+    if(this.mode==='mono'){
+      ctx.fillStyle='#b6c4c8';
+      for(let y=0;y<rows;y++){
+        let line='';
+        for(let x=0;x<cols;x++){
+          const k=y*cols+x;
+          line+=Number.isFinite(depth[k])?GLYPHS[symbol[k]]:((x*17+y*13)%43===0?'·':' ');
+        }
+        ctx.fillText(line,0,y*this.cellHeight);
+      }
+      this.frame++;return;
+    }
     // The sky itself is rendered as colored characters (no WebGL sky dome).
     const skyColor=this.mode==='mono'?rgb(122,157,175):rgb(111,164,206);
     for(let y=0;y<rows;y++){
