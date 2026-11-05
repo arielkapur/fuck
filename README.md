@@ -4,14 +4,14 @@ A browser-based experimental **3D multiplayer world**, built with Three.js and a
 
 **Play:** https://fuck-world.onrender.com/
 
-## Latest changelog — v0.1.2a (2026-11-05)
+## Latest changelog — v0.1.2b (2026-11-05)
 
-**Patch 002 hotfix — grey-screen diagnostics**
+**Patch 002 — visibility hotfix**
 
-- Corrected ASCII glyph-cell alignment using measured font width.
-- Added visible startup and runtime error reporting to identify failures that previously appeared as an empty screen.
-- No world/gameplay design changes; see [CHANGELOG.md](CHANGELOG.md) for the complete history.
-- The browser's actual error message is needed if the screen remains blank.
+- Corrected inconsistent ground/geometry depth comparisons.
+- Increased contrast between concrete, characters, building and sky.
+- Press **F3** to inspect ASCII rendering statistics (grid, surface samples, camera) when troubleshooting.
+- See [CHANGELOG.md](CHANGELOG.md) for full history.
 
 ## Controls
 
