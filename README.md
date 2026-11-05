@@ -4,17 +4,14 @@ A browser-based experimental **3D multiplayer world**, built with Three.js and a
 
 **Play:** https://fuck-world.onrender.com/
 
-## Latest changelog — v0.1.2 (2026-11-05)
+## Latest changelog — v0.1.2a (2026-11-05)
 
-**Patch 002 — ASCII-First**
+**Patch 002 hotfix — grey-screen diagnostics**
 
-- Replaced WebGL rasterization with an actual **software 3D-to-ASCII renderer** (surface projection, character Z-buffer, lighting, glyph shading).
-- Replaced stick figures with **animated full-body humanoid forms** assembled from head, neck, torso, arms, hands, thighs, knees, calves and feet.
-- Preserved the concrete world, spawn building, tree, NPC, multiplayer, camera controls and ESC menu.
-- Added settings for **ASCII cell size** (8/10/12/15/18 px) and monochrome/colour modes.
-- Renderer module: `server/public/ascii.js`; the world is still controlled from `server/public/main.js`.
-
-See [CHANGELOG.md](CHANGELOG.md) for all releases and [prompts.txt](prompts.txt) for the design-conversation archive.
+- Corrected ASCII glyph-cell alignment using measured font width.
+- Added visible startup and runtime error reporting to identify failures that previously appeared as an empty screen.
+- No world/gameplay design changes; see [CHANGELOG.md](CHANGELOG.md) for the complete history.
+- The browser's actual error message is needed if the screen remains blank.
 
 ## Controls
 
