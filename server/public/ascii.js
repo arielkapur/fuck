@@ -1,294 +1,242 @@
-// ASCII-FIRST RENDERER. No WebGL canvas or post-processing filter.
-// CPU projects shaded 3D surface samples into a character + depth buffer.
+// FUCK / 2.2: ASCII-FIRST SOFTWARE 3D RENDERER.
+// No WebGL image and no postprocess effect: per-character rays + projected 3D
+// geometry share one CPU depth buffer. A cached glyph atlas keeps colour affordable.
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
+import {terrainHeight} from './terrain.js';
 
-const GLYPHS = ' .,:;irsXA253hMHGS#9B&@';
-const V = new THREE.Vector3();
-const TMP = new THREE.Vector3();
-const N = new THREE.Vector3();
-const inverse = new THREE.Matrix4();
-const normalMatrix = new THREE.Matrix3();
-const bright = new THREE.Vector3(-.5, .9, .3).normalize();
-const xzGround = new THREE.Vector3();
-const rgb = (r,g,b) => [r,g,b];
-const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
-
-function sampleMesh(mesh, density, maxSamples=1400) {
-  const geometry = mesh.geometry;
-  const position = geometry.getAttribute('position');
-  const normal = geometry.getAttribute('normal');
-  if (!position || !normal) return [];
-  const indices = geometry.index;
-  const tris=[];
+const RAMP = Array.from(' .,:;irsXA253hMHGS#9B&@');
+const EXTRA = Array.from('░▒▓█木林山水火天風森林कमनहवनあア');
+const CHARS=[...new Set([...RAMP,...EXTRA,'*','+','·'])];
+const rampIndex = char => CHARS.indexOf(char);
+const starSmall=rampIndex('·'),starBig=rampIndex('*');
+const edgeGlyph=rampIndex('#');
+const v=new THREE.Vector3(), tmp=new THREE.Vector3(), normal=new THREE.Vector3();
+const inverse=new THREE.Matrix4(),normalMatrix=new THREE.Matrix3();
+const light=new THREE.Vector3(-.45,.82,.35).normalize();
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const clampByte=n=>clamp(Math.round(n),0,255);
+const PALETTE=[
+  [73,116,154],   // 0 sky
+  [91,105,117],   // 1 concrete
+  [92,137,99],    // 2 grass
+  [155,136,101],  // 3 ground/soil
+  [181,191,202],  // 4 building
+  [244,216,145],  // 5 edges
+  [136,96,66],    // 6 bark
+  [64,176,110],   // 7 foliage
+  [223,226,236],  // 8 player silhouettes
+  [245,241,208]   // 9 stars
+];
+function samplesFor(mesh,density,limit) {
+  const geo=mesh.geometry,pos=geo.getAttribute('position'),norm=geo.getAttribute('normal');
+  if(!pos||!norm)return [];
+  const idx=geo.index,triangles=(idx?idx.count:pos.count)/3;
+  const index=i=>idx?idx.getX(i):i;
+  const areas=[],p0=new THREE.Vector3(),p1=new THREE.Vector3(),p2=new THREE.Vector3();
   let total=0;
-  const getIndex=i=>indices?indices.getX(i):i;
-  const triangleCount=(indices?indices.count:position.count)/3;
-  const a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3();
-  for(let t=0;t<triangleCount;t++){
-    const ia=getIndex(t*3),ib=getIndex(t*3+1),ic=getIndex(t*3+2);
-    a.fromBufferAttribute(position,ia);b.fromBufferAttribute(position,ib);c.fromBufferAttribute(position,ic);
-    const area=b.clone().sub(a).cross(c.clone().sub(a)).length()*.5;
-    if(area<1e-8)continue;
-    total+=area;tris.push([ia,ib,ic,total]);
+  for(let t=0;t<triangles;t++){
+    const i0=index(t*3),i1=index(t*3+1),i2=index(t*3+2);
+    p0.fromBufferAttribute(pos,i0);p1.fromBufferAttribute(pos,i1);p2.fromBufferAttribute(pos,i2);
+    const area=p1.clone().sub(p0).cross(p2.clone().sub(p0)).length()*.5;
+    total+=area;areas.push(total);
   }
-  if(!total)return [];
-  const count=clamp(Math.ceil(total*density),130,maxSamples);
-  const samples=[];
-  let cursor=0;
+  if(total<1e-8)return [];
+  const count=clamp(Math.round(total*density),30,limit),out=[];
+  let tri=0;
   for(let i=0;i<count;i++){
-    const areaTarget=(i+.5)*total/count;
-    while(cursor<tris.length-1 && tris[cursor][3]<areaTarget)cursor++;
-    const [ia,ib,ic]=tris[cursor];
-    // Low-discrepancy barycentric distribution: deterministic, no jitter between frames.
-    const u=Math.sqrt((i*.618033988749895)%1),v=(i*.7548776662466927)%1;
-    const w0=1-u,w1=u*(1-v),w2=u*v;
-    const px=position.getX(ia)*w0+position.getX(ib)*w1+position.getX(ic)*w2;
-    const py=position.getY(ia)*w0+position.getY(ib)*w1+position.getY(ic)*w2;
-    const pz=position.getZ(ia)*w0+position.getZ(ib)*w1+position.getZ(ic)*w2;
-    const nx=normal.getX(ia)*w0+normal.getX(ib)*w1+normal.getX(ic)*w2;
-    const ny=normal.getY(ia)*w0+normal.getY(ib)*w1+normal.getY(ic)*w2;
-    const nz=normal.getZ(ia)*w0+normal.getZ(ib)*w1+normal.getZ(ic)*w2;
-    samples.push([px,py,pz,nx,ny,nz]);
+    const target=(i+.5)/count*total;
+    while(tri<triangles-1 && areas[tri]<target)tri++;
+    const indices=[index(tri*3),index(tri*3+1),index(tri*3+2)];
+    const u=Math.sqrt((i*.61803398875)%1),w=(i*.75487766625)%1;
+    const weights=[1-u,u*(1-w),u*w];
+    let x=0,y=0,z=0,nx=0,ny=0,nz=0;
+    for(let q=0;q<3;q++){
+      const k=indices[q],a=weights[q];
+      x+=pos.getX(k)*a;y+=pos.getY(k)*a;z+=pos.getZ(k)*a;
+      nx+=norm.getX(k)*a;ny+=norm.getY(k)*a;nz+=norm.getZ(k)*a;
+    }
+    out.push([x,y,z,nx,ny,nz]);
   }
-  return samples;
+  return out;
 }
 export class AsciiRenderer {
-  constructor(canvas, scene, camera) {
-    this.canvas=canvas;this.scene=scene;this.camera=camera;
-    this.ctx=canvas.getContext('2d',{alpha:false});
-    this.meshes=new Map();this.edges=new Map();this.cellHeight=12;this.mode='mono';
-    // Deterministic stars fixed to celestial directions, not screen pixels.
-    this.stars=Array.from({length:450},(_,i)=>{
-      const y=1-2*(i+.5)/450;
-      const angle=i*2.399963229728653;
-      const radius=Math.sqrt(1-y*y);
-      return new THREE.Vector3(radius*Math.cos(angle),y,radius*Math.sin(angle));
+  constructor(canvas,scene,camera) {
+    this.canvas=canvas;this.ctx=canvas.getContext('2d',{alpha:false});
+    this.scene=scene;this.camera=camera;
+    this.meshes=new Map();this.edges=new Map();this.mode='color';
+    this.cellHeight=10.5;this.frame=0;this.visibleSamples=0;
+    this.stars=Array.from({length:420},(_,i)=>{
+      const y=1-2*(i+.5)/420,a=i*2.399963229728653,r=Math.sqrt(1-y*y);
+      return new THREE.Vector3(Math.cos(a)*r,y,Math.sin(a)*r);
     });
-    this.frame=0;
     this.resize();
   }
-  register(mesh, density=125, maxSamples=1600) {
-    this.meshes.set(mesh,sampleMesh(mesh,density,maxSamples));
-  }
+  register(mesh,density=80,maxSamples=600){this.meshes.set(mesh,samplesFor(mesh,density,maxSamples))}
   unregister(mesh){this.meshes.delete(mesh);this.edges.delete(mesh)}
   registerEdges(mesh){
-    // Local box corners, transformed each frame along with wall geometry.
-    const {min,max}=mesh.geometry.boundingBox || (mesh.geometry.computeBoundingBox(),mesh.geometry.boundingBox);
-    const corners=[];
+    const geo=mesh.geometry;
+    if(!geo.boundingBox)geo.computeBoundingBox();
+    const {min,max}=geo.boundingBox,corners=[];
     for(const x of [min.x,max.x])for(const y of [min.y,max.y])for(const z of [min.z,max.z])corners.push([x,y,z]);
     const edges=[];
     for(let i=0;i<8;i++)for(let j=i+1;j<8;j++){
-      const differing=(corners[i][0]!==corners[j][0])+(corners[i][1]!==corners[j][1])+(corners[i][2]!==corners[j][2]);
-      if(differing===1) edges.push([corners[i],corners[j]]);
+      const a=corners[i],b=corners[j];
+      const diffs=(a[0]!==b[0])+(a[1]!==b[1])+(a[2]!==b[2]);
+      if(diffs===1)edges.push([a,b]);
     }
     this.edges.set(mesh,edges);
   }
-  setResolution(n){this.cellHeight=Number(n);this.resize()}
-  setPalette(name){this.mode=name}
-  resize(){
-    const w=Math.max(1,innerWidth),h=Math.max(1,innerHeight),dpr=Math.min(devicePixelRatio||1,2);
-    this.canvas.width=Math.round(w*dpr);this.canvas.height=Math.round(h*dpr);
-    this.ctx.setTransform(dpr,0,0,dpr,0,0);
-    this.width=w;this.height=h;
-    this.cellWidth=this.cellHeight*.62;
-    this.cols=Math.max(1,Math.ceil(w/this.cellWidth));
-    this.rows=Math.max(1,Math.ceil(h/this.cellHeight));
-    this.depth=new Float32Array(this.cols*this.rows);
-    this.symbol=new Uint8Array(this.depth.length);
-    this.r=new Uint8Array(this.depth.length);
-    this.g=new Uint8Array(this.depth.length);
-    this.b=new Uint8Array(this.depth.length);
-    this.kind=new Uint8Array(this.depth.length);
-    this.ctx.font=this.cellHeight+'px monospace';
-    // Measure actual glyph width instead of assuming that .62 * font size
-    // is what the browser's monospace font really uses.
-    this.cellWidth=Math.max(1,this.ctx.measureText('M').width);
-    this.cols=Math.max(1,Math.floor(w/this.cellWidth));
-    this.rows=Math.max(1,Math.floor(h/this.cellHeight));
-    const n=this.cols*this.rows;
-    this.depth=new Float32Array(n);this.symbol=new Uint8Array(n);
-    this.r=new Uint8Array(n);this.g=new Uint8Array(n);this.b=new Uint8Array(n);this.kind=new Uint8Array(n);
-    this.ctx.textBaseline='top';
-    this.ctx.fillStyle='#0a131b';
-    this.ctx.fillRect(0,0,w,h);
-  }
-  draw() {
-    const {ctx,cols,rows,depth,symbol,r,g,b,kind}=this;
-    depth.fill(Infinity);symbol.fill(0);r.fill(0);g.fill(0);b.fill(0);kind.fill(0);
-    const cam=this.camera;
-    cam.updateMatrixWorld();
-    this.scene.updateMatrixWorld(true);
-    inverse.copy(cam.matrixWorld).invert();
-    const f=Math.tan(THREE.MathUtils.degToRad(cam.fov)*.5);
-    const aspect=this.width/this.height;
-    const light=bright;
-
-    // Ground comes directly from an analytic ray/plane intersection per glyph:
-    // no 8 km surface sampling or infinite prop generation.
-    const cx=cam.position.x,cy=cam.position.y,cz=cam.position.z;
-    for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
-      const ndcX=((x+.5)/cols*2-1)*aspect*f;
-      const ndcY=(1-(y+.5)/rows*2)*f;
-      V.set(ndcX,ndcY,-1).normalize().transformDirection(cam.matrixWorld);
-      if(V.y>=-.0001)continue;
-      const t=(-.035-cy)/V.y;
-      if(t<=cam.near||t>=cam.far)continue;
-      const gx=cx+V.x*t,gz=cz+V.z*t;
-      if(Math.abs(gx)>4096||Math.abs(gz)>4096)continue;
-      const k=y*cols+x;
-      // Mesh depths use eye-space Z, so the ground must too.
-      depth[k]=t/Math.sqrt(1+ndcX*ndcX+ndcY*ndcY);
-      kind[k]=1;
-      // Subtle concrete grain determined by world position, not a screen filter.
-      const grain=(Math.sin(gx*2.15)*Math.cos(gz*1.73)+1)*.5;
-      const luminance=clamp(.08+grain*.11-(t/cam.far)*.03,0,1);
-      symbol[k]=Math.floor(luminance*(GLYPHS.length-1));
-      const shade=Math.round(100+grain*17);
-      r[k]=shade;g[k]=shade;b[k]=shade;
-    }
-
-    let visibleSamples=0;
-    for(const [mesh,points] of this.meshes) {
-      if(!mesh.visible || !this.isVisible(mesh) || !points.length) continue;
-      mesh.updateWorldMatrix(true,false);
-      const world=mesh.matrixWorld;
-      normalMatrix.getNormalMatrix(world);
-      const matColor=mesh.material.color || new THREE.Color('#bbbbbb');
-      const baseR=matColor.r,baseG=matColor.g,baseB=matColor.b;
-      for(let i=0;i<points.length;i++){
-        const s=points[i];
-        TMP.set(s[0],s[1],s[2]).applyMatrix4(world).applyMatrix4(inverse);
-        const z=-TMP.z;
-        if(z<=cam.near || z>=cam.far) continue;
-        const xx=TMP.x/(z*f*aspect), yy=TMP.y/(z*f);
-        if(Math.abs(xx)>1||Math.abs(yy)>1)continue;
-        const gx=Math.floor((xx*.5+.5)*cols),gy=Math.floor((.5-yy*.5)*rows);
-        if(gx<0||gy<0||gx>=cols||gy>=rows)continue;
-        const k=gy*cols+gx;
-        if(z>=depth[k]+.05)continue;
-        N.set(s[3],s[4],s[5]).applyMatrix3(normalMatrix).normalize();
-        const illumination=clamp(.24+Math.max(0,N.dot(light))*.76,0,1);
-        // boost legibility so black characters remain distinct on concrete
-        const darkness=1-Math.max(baseR,baseG,baseB);
-        const density=clamp(illumination*.58+.2+darkness*.22,0,1);
-        depth[k]=z;
-        kind[k]=2;
-        visibleSamples++;
-        symbol[k]=Math.max(1,Math.floor(density*(GLYPHS.length-1)));
-        const factor=.42+illumination*.58;
-        r[k]=Math.round(clamp(baseR*255*factor,0,255));
-        g[k]=Math.round(clamp(baseG*255*factor,0,255));
-        b[k]=Math.round(clamp(baseB*255*factor,0,255));
+  setResolution(value){this.cellHeight=Number(value)||10.5;this.resize()}
+  setPalette(value){this.mode=value==='mono'?'mono':'color'}
+  makeAtlas(){
+    const w=Math.ceil(this.cellWidth),h=Math.ceil(this.cellHeight);
+    this.tileW=w;this.tileH=h;
+    const atlas=document.createElement('canvas');
+    atlas.width=w*CHARS.length;atlas.height=h*PALETTE.length*4;
+    const c=atlas.getContext('2d',{alpha:true});
+    c.textBaseline='top';
+    // Browser font fallback: multilingual glyphs stay within one ASCII cell.
+    const family='monospace, "Noto Sans CJK SC", "Noto Sans Devanagari", sans-serif';
+    c.font=(h-1)+'px '+family;
+    for(let color=0;color<PALETTE.length;color++)for(let level=0;level<4;level++){
+      const [red,green,blue]=PALETTE[color],factor=this.mode==='mono'?(0.55+level*.16):(0.46+level*.2);
+      if(this.mode==='mono'){const lum=.2126*red+.7152*green+.0722*blue;
+        c.fillStyle='rgb('+clampByte(lum*factor)+','+clampByte(lum*factor)+','+clampByte(lum*factor)+')';
+      }else c.fillStyle='rgb('+clampByte(red*factor)+','+clampByte(green*factor)+','+clampByte(blue*factor)+')';
+      for(let glyph=1;glyph<CHARS.length;glyph++){
+        // Draw each character with explicit maximum width; even double-width
+        // CJK and Devanagari glyphs cannot spill into neighbouring grid cells.
+        c.fillText(CHARS[glyph],glyph*w,(color*4+level)*h,w);
       }
     }
-
-    // Project box outlines into the exact same z-buffer as shaded surfaces.
-    // Makes dark wall boundaries read clearly without changing the 3D scene.
-    const project=(point,world)=>{
-      const p=new THREE.Vector3(...point).applyMatrix4(world).applyMatrix4(inverse);
-      const z=-p.z;
-      if(z<=cam.near||z>=cam.far)return null;
-      const nx=p.x/(z*f*aspect),ny=p.y/(z*f);
-      return {x:(nx*.5+.5)*cols,y:(.5-ny*.5)*rows,z};
+    this.atlas=atlas;
+  }
+  resize(){
+    const cw=Math.max(1,innerWidth),ch=Math.max(1,innerHeight);
+    const scale=Math.min(devicePixelRatio||1,2);
+    this.canvas.width=Math.round(cw*scale);this.canvas.height=Math.round(ch*scale);
+    this.ctx.setTransform(scale,0,0,scale,0,0);
+    this.ctx.font=this.cellHeight+'px monospace';
+    this.cellWidth=Math.max(1,this.ctx.measureText('M').width);
+    this.width=cw;this.height=ch;
+    this.cols=Math.max(1,Math.floor(cw/this.cellWidth));
+    this.rows=Math.max(1,Math.floor(ch/this.cellHeight));
+    const n=this.cols*this.rows;
+    this.depth=new Float32Array(n);this.glyph=new Uint8Array(n);
+    this.type=new Uint8Array(n);this.shade=new Uint8Array(n);
+    this.makeAtlas();
+  }
+  visible(mesh){if(!mesh.visible)return false;for(let p=mesh.parent;p;p=p.parent)if(!p.visible)return false;return true}
+  draw(){
+    const {cols,rows,depth,glyph,type,shade,ctx,camera:cam}=this;
+    depth.fill(Infinity);glyph.fill(0);type.fill(0);shade.fill(0);
+    cam.updateMatrixWorld();this.scene.updateMatrixWorld(true);
+    inverse.copy(cam.matrixWorld).invert();
+    const tan=Math.tan(THREE.MathUtils.degToRad(cam.fov)*.5);
+    const aspect=this.width/this.height;
+    const cx=cam.position.x,cy=cam.position.y,cz=cam.position.z;
+    const xScale=aspect*tan,yScale=tan;
+    // Terrain is sampled directly at the character grid rather than meshed.
+    // Three fixed-point iterations find the heightfield/eye-ray intersection.
+    for(let iy=0;iy<rows;iy++){
+      const ry=(1-2*(iy+.5)/rows)*yScale;
+      for(let ix=0;ix<cols;ix++){
+        const rx=(2*(ix+.5)/cols-1)*xScale;
+        v.set(rx,ry,-1).normalize().transformDirection(cam.matrixWorld);
+        if(v.y>=-.008)continue;
+        let t=(terrainHeight(cx,cz)-cy)/v.y;
+        if(t<=0)t=(cy+9)/-v.y;
+        for(let k=0;k<3;k++){
+          const gx=cx+v.x*t,gz=cz+v.z*t;
+          t=(terrainHeight(gx,gz)-cy)/v.y;
+          if(t<=0||t>cam.far*2)break;
+        }
+        if(t<=cam.near||t>=cam.far*Math.sqrt(1+rx*rx+ry*ry))continue;
+        const gx=cx+v.x*t,gz=cz+v.z*t;
+        if(Math.abs(gx)>4096||Math.abs(gz)>4096)continue;
+        const index=iy*cols+ix;
+        depth[index]=t/Math.sqrt(1+rx*rx+ry*ry);
+        const radius=Math.hypot(gx-4,gz+6);
+        const variation=Math.sin(gx*.17)*Math.cos(gz*.22);
+        const slope=Math.abs(terrainHeight(gx+.7,gz)-terrainHeight(gx,gz))+
+                    Math.abs(terrainHeight(gx,gz+.7)-terrainHeight(gx,gz));
+        type[index]=radius<33?1:slope>.55?3:2;
+        shade[index]=clamp(Math.floor(2.1+variation*.65-slope*.6),0,3);
+        const value=clamp(Math.floor(4+variation*2+slope*1.6),1,RAMP.length-1);
+        glyph[index]=value;
+        if(radius>=33&&index%31===0)glyph[index]=rampIndex('░');
+      }
+    }
+    let visibleSamples=0;
+    for(const [mesh,points] of this.meshes){
+      if(!points.length||!this.visible(mesh))continue;
+      mesh.updateWorldMatrix(true,false);
+      const world=mesh.matrixWorld;normalMatrix.getNormalMatrix(world);
+      const surface=mesh.userData.asciiType||4;
+      for(const point of points){
+        tmp.set(point[0],point[1],point[2]).applyMatrix4(world).applyMatrix4(inverse);
+        const z=-tmp.z;
+        if(z<=cam.near||z>cam.far)continue;
+        const nx=tmp.x/(z*xScale),ny=tmp.y/(z*yScale);
+        if(Math.abs(nx)>1||Math.abs(ny)>1)continue;
+        const ix=Math.floor((nx*.5+.5)*cols),iy=Math.floor((.5-ny*.5)*rows);
+        if(ix<0||iy<0||ix>=cols||iy>=rows)continue;
+        const k=iy*cols+ix;
+        if(z>=depth[k]+.06)continue;
+        normal.set(point[3],point[4],point[5]).applyMatrix3(normalMatrix).normalize();
+        const illum=clamp(.23+Math.max(0,normal.dot(light))*.77,0,1);
+        const detail=clamp(Math.floor(illum*3.8),0,3);
+        depth[k]=z;type[k]=surface;shade[k]=detail;visibleSamples++;
+        let ramp=clamp(Math.floor(illum*(RAMP.length-1)),1,RAMP.length-1);
+        // UTF-8 / Unicode accents. Not all Unicode codepoints have equal
+        // advance widths, so the glyph atlas clips them into fixed cells.
+        if(surface===7&&k%7===0)ramp=rampIndex('林');
+        else if(surface===7&&k%11===0)ramp=rampIndex('木');
+        else if(surface===3&&k%37===0)ramp=rampIndex('山');
+        else if(surface===4&&k%41===0)ramp=rampIndex('क');
+        glyph[k]=ramp;
+      }
+    }
+    // Building edge outlines remain depth-tested.
+    const project=(p,m)=>{
+      const pt=new THREE.Vector3(...p).applyMatrix4(m).applyMatrix4(inverse);
+      const z=-pt.z;if(z<=cam.near||z>=cam.far)return null;
+      return {x:(pt.x/(z*xScale)*.5+.5)*cols,y:(.5-pt.y/(z*yScale)*.5)*rows,z};
     };
     for(const [mesh,segments] of this.edges){
-      if(!mesh.visible||!this.isVisible(mesh))continue;
+      if(!this.visible(mesh))continue;
       mesh.updateWorldMatrix(true,false);
       for(const [a,b] of segments){
         const pa=project(a,mesh.matrixWorld),pb=project(b,mesh.matrixWorld);
         if(!pa||!pb)continue;
-        const count=Math.ceil(Math.max(Math.abs(pb.x-pa.x),Math.abs(pb.y-pa.y))*1.5);
-        if(count<1||count>1200)continue;
+        const count=clamp(Math.ceil(Math.max(Math.abs(pb.x-pa.x),Math.abs(pb.y-pa.y))*1.4),1,1200);
         for(let i=0;i<=count;i++){
           const t=i/count,x=Math.floor(pa.x+(pb.x-pa.x)*t),y=Math.floor(pa.y+(pb.y-pa.y)*t);
           if(x<0||y<0||x>=cols||y>=rows)continue;
-          const z=pa.z+(pb.z-pa.z)*t,k=y*cols+x;
-          if(z<=depth[k]+.42){
-            depth[k]=Math.min(depth[k],z);
-            kind[k]=3;symbol[k]=GLYPHS.length-1;
-            r[k]=233;g[k]=230;b[k]=211;
-          }
+          const k=y*cols+x,z=pa.z+(pb.z-pa.z)*t;
+          if(z<=depth[k]+.4){depth[k]=Math.min(depth[k],z);type[k]=5;shade[k]=3;glyph[k]=edgeGlyph;}
         }
       }
     }
-    // Stars only occupy the empty sky; projection follows camera rotation.
     for(let i=0;i<this.stars.length;i++){
       const dir=this.stars[i].clone().transformDirection(inverse);
       if(dir.z>=-.01)continue;
-      const nx=dir.x/(-dir.z*f*aspect),ny=dir.y/(-dir.z*f);
+      const nx=dir.x/(-dir.z*xScale),ny=dir.y/(-dir.z*yScale);
       const x=Math.floor((nx*.5+.5)*cols),y=Math.floor((.5-ny*.5)*rows);
       if(x<0||y<0||x>=cols||y>=rows)continue;
-      const k=y*cols+x;
-      if(kind[k]!==0)continue;
-      kind[k]=4;
-      symbol[k]=i%13===0?2:1;
-      r[k]=215;g[k]=226;b[k]=255;
+      const k=y*cols+x;if(type[k]!==0)continue;
+      type[k]=9;shade[k]=3;glyph[k]=i%13===0?starBig:starSmall;
     }
     this.visibleSamples=visibleSamples;
     this.meshCount=this.meshes.size;
-    ctx.fillStyle='#0a131b';ctx.fillRect(0,0,this.width,this.height);
-    if(this.mode==='mono'){
-      // Separate sky, concrete, and solid geometry into high-contrast passes.
-      // Drawing them all in the same colour made the world look uniformly grey.
-      const bands=[
-        {kind:0,color:'#5b7c8f'},
-        {kind:1,color:'#53606a'},
-        {kind:2,color:'#d9e5ed'},
-        {kind:3,color:'#fff2bb'},
-        {kind:4,color:'#f3f6ff'}
-      ];
-      for(const band of bands){
-        ctx.fillStyle=band.color;
-        for(let y=0;y<rows;y++){
-          let line='';
-          for(let x=0;x<cols;x++){
-            const k=y*cols+x;
-            if(kind[k]!==band.kind){line+=' ';continue;}
-            line+=band.kind===0?((x*17+y*13)%31===0?'.':' '):
-              band.kind===1?GLYPHS[Math.max(1,symbol[k])]:
-              band.kind===3?'#':
-              band.kind===4?(symbol[k]===2?'*':'.'):
-              GLYPHS[Math.max(13,symbol[k])];
-          }
-          ctx.fillText(line,0,y*this.cellHeight);
-        }
-      }
-      this.frame++;return;
-    }
-    // The sky itself is rendered as colored characters (no WebGL sky dome).
-    const skyColor=this.mode==='mono'?rgb(122,157,175):rgb(111,164,206);
-    for(let y=0;y<rows;y++){
-      let cached='';
-      for(let x=0;x<cols;x++){
-        const k=y*cols+x;
-        let char, red,green,blue;
-        if(!Number.isFinite(depth[k])) {
-          const daylight=clamp(1-y/rows,0,1);
-          char=(x*17+y*13)%43===0?'·':' ';
-          red=Math.round(skyColor[0]*(.62+.38*daylight));
-          green=Math.round(skyColor[1]*(.68+.32*daylight));
-          blue=Math.round(skyColor[2]*(.76+.24*daylight));
-        } else {
-          char=kind[k]===3?'#':kind[k]===4?(symbol[k]===2?'*':'.'):GLYPHS[symbol[k]];
-          if(this.mode==='mono'){
-            const brightness=Math.round(r[k]*.2126+g[k]*.7152+b[k]*.0722);
-            red=green=blue=clamp(brightness+40,0,255);
-          }else{
-            red=r[k];green=g[k];blue=b[k];
-            const max=Math.max(red,green,blue);
-            if(max<75){red=green=blue=100} // distinguish dark humanoid from background
-          }
-        }
-        if(char===' ')continue;
-        const color=red+','+green+','+blue;
-        if(color!==cached){ctx.fillStyle='rgb('+color+')';cached=color}
-        ctx.fillText(char,x*this.cellWidth,y*this.cellHeight);
-      }
+    ctx.fillStyle='#08131c';ctx.fillRect(0,0,this.width,this.height);
+    // Atlas blits instead of thousands of per-cell font rasterisations.
+    const tw=this.tileW,th=this.tileH;
+    for(let k=0;k<glyph.length;k++){
+      const g=glyph[k];if(!g)continue;
+      ctx.drawImage(this.atlas,g*tw,(type[k]*4+shade[k])*th,tw,th,
+        (k%cols)*this.cellWidth,Math.floor(k/cols)*this.cellHeight,this.cellWidth,this.cellHeight);
     }
     this.frame++;
-  }
-  isVisible(object){
-    for(let cur=object.parent;cur;cur=cur.parent)if(!cur.visible)return false;
-    return true;
   }
 }
