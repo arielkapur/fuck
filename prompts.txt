@@ -169,3 +169,39 @@ ASSISTANT (user-visible progress):
 "The playable pieces are wired up: hills affect player height, trees are generated in a reusable pool, and the minimap shows terrain, trees, the building and nearby players. I spotted one palette assignment I’m correcting before the final checks, so trees actually render green rather than concrete-grey."
 
 ASSISTANT (implementation): Added terrain.js and forest.js, replaced the ASCII renderer with a density-adjustable high-contrast coloured glyph atlas, updated terrain-height movement and jump physics, and added a minimap. Included selected Unicode glyphs rather than promising every codepoint. Updated the Render module routes, README and CHANGELOG. Browser playtesting still required.
+
+2026-11-05 — PATCH 2.3 — USER DESIGN PROMPT
+------------------------------------------
+USER:
+Patch 2.3
+
+**Player**
+
+> The modeI STILL looks incomplete, also the player is moving backwards - i.e. pressing W does move them forward in the world but they do still appear to be moving backwards. Please amend this.
+>
+> The player model needs to have a homogenous face and maintain a bit more stick-figure like ness while being 3d still. No muscles or anything yet. Just normal build.
+>
+> Introduce an attack (LMB) action and add it to the tutorial after Menu is pressed. "Press LMB to attack." The player action in game reflecting the attack while no weapon is equipped is a simple punch action which is a wave of the hand sort of animation rather than an actual martial arts punch.
+
+**UI**
+
+> Press M to acccess Map, which is also viewable from Escape menu.
+>
+> Escpe Menu is organised as free buttons (not bounded or bordered, just text) close the top of the screen organised into tabs next to each other. Clicking on each tab will reveal the full submenu.
+>
+> For the Map, pressing M opens the Map submenu, which displays the section of the world the player has discovered - ie the sight radius of the player - if it has showed up on the camera for the individual player, it will show up on the map.
+
+**World**
+
+> Introduce the beginnings of a golbin camp nearby, complete with sharp wooden spikes, an animated campfire out the front, and a single green goblin npc wearing tattered brown rags near the campfire. No actions or prgramming yet for this AI.
+
+**Camera Collision**
+
+> Enable the camera to collide with the ground so that it slides across the ground towards the player in-game when the mouse position moves up , rather than cutting to below the game world.
+
+ASSISTANT (user-visible updates):
+"Patch 2.3 is a bigger one. I’ll fix the character’s facing and silhouette, add the punch and staged tutorial, rebuild the ESC menu as tabs, then add exploration-based map discovery, a goblin camp, and ground-safe camera movement. I’ll push the patch and update the logs."
+"The character and gameplay changes are committed. The new avatar has a plain face and slimmer limbs, LMB plays a hand-wave punch, and the map records terrain only when it enters your camera’s view. I’m finishing the tab layout and checking the camera collision maths before the final push."
+"The new modules pass JavaScript syntax checks. I found one ESC edge case to fix: when the browser releases pointer lock, it can open the menu before the key event arrives. I’m making that count as the first menu visit so the attack tutorial advances reliably."
+
+ASSISTANT (implementation): Replaced the avatar, added local attack animation and tutorial stage, full-window top-row tab menu, individual camera-based discovered terrain with saved local progress, goblin camp with animated fire and inert NPC, and terrain-aware camera collision. Added camp.js/cartography.js and updated server routes. All changes pending browser playtest.
