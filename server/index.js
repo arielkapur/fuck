@@ -8,9 +8,9 @@ import {randomUUID} from 'node:crypto';
 const port=Number(process.env.PORT)||3001;
 const publicDir=join(dirname(fileURLToPath(import.meta.url)),'public');
 const files=new Map([
-  ['/','index.html'],['/index.html','index.html'],['/main.js','main.js'],['/ascii.js','ascii.js'],['/style.css','style.css']
+  ['/','index.html'],['/index.html','index.html'],['/main.js','main.js'],['/ascii.js','ascii.js'],['/terrain.js','terrain.js'],['/forest.js','forest.js'],['/style.css','style.css']
 ]);
-const mime=new Map([['index.html','text/html; charset=utf-8'],['main.js','text/javascript; charset=utf-8'],['ascii.js','text/javascript; charset=utf-8'],['style.css','text/css; charset=utf-8']]);
+const mime=new Map([['index.html','text/html; charset=utf-8'],['main.js','text/javascript; charset=utf-8'],['ascii.js','text/javascript; charset=utf-8'],['terrain.js','text/javascript; charset=utf-8'],['forest.js','text/javascript; charset=utf-8'],['style.css','text/css; charset=utf-8']]);
 const players=new Map();
 const http=createServer(async(req,res)=>{
   const path=(req.url||'/').split('?')[0];
@@ -38,7 +38,7 @@ wss.on('connection',ws=>{
     if(m?.type!=='move'||!Number.isFinite(m.x)||!Number.isFinite(m.z))return;
     const player=players.get(id);
     if(player){
-      if (Number.isFinite(m.y)) player.y=Math.max(0,Math.min(30,m.y));
+      if (Number.isFinite(m.y)) player.y=Math.max(-30,Math.min(60,m.y));
       player.x=Math.max(-4091,Math.min(4091,m.x));
       player.z=Math.max(-4091,Math.min(4091,m.z));
     }
