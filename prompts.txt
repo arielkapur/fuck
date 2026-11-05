@@ -100,3 +100,10 @@ It's showing an empty grey screen"
 ASSISTANT: "Got it. I’ll check the live client code for a startup or rendering error and push a fix, rather than guessing at the grey screen."
 ASSISTANT: "I can’t inspect the browser console remotely, so I can’t confirm the exact failure yet. I’ve narrowed it to client startup or the ASCII draw path. I’m adding an on-screen error report and a safer draw loop so we can get a useful failure message instead of just grey."
 ASSISTANT (implementation): Added startup/error diagnostic UI, protected the ASCII render call, and fixed character-cell measurements. Further debugging may require the user to report any on-screen error.
+
+2026-11-05 — PATCH 002 GREY SCREEN FOLLOW-UP
+--------------------------------------------
+USER: "It's still grey, there's no errors but there's an XYZ indicator in the top left corner same as before."
+ASSISTANT: "That helps: the XYZ indicator means the client is running, so this looks more like a visibility/rendering problem than a startup crash. I’ll reproduce the scene locally, then fix the renderer so the ground and objects are clearly distinguishable."
+ASSISTANT (progress): "I found two concrete rendering problems: ground and objects used mismatched depth values, and the monochrome renderer drew nearly everything with the same shade. Both are patched. I’m adding an F3 diagnostic readout so, if anything still disappears, we can see whether geometry is reaching the screen."
+ASSISTANT (implementation): Fixed ground Z-buffer distance convention and separated ASCII ground/geometry contrast. F3 toggles a diagnostics overlay. Browser verification still required.
