@@ -2,6 +2,24 @@
 
 All notable updates to **FUCK / World 001** are recorded here. Newest first.
 
+## [0.1.2] — 2026-11-05 — Patch 002: ASCII-First
+
+### Rendering
+- **Goodbye WebGL rendering:** World 001 now projects 3D surface samples directly into an ASCII character grid using a CPU depth buffer and directional shading. This isn't a post-processing filter on a normal 3D image.
+- **Monochrome by default:** batched text rendering for a fast, dense terminal aesthetic. Optional coloured glyphs and five ASCII character-size presets are available in Settings.
+- **Concrete is raycast analytically** at each character cell; the large map doesn't need millions of geometry samples.
+- The building, tree, NPC and multiplayer avatars remain three-dimensional; the ASCII renderer owns their final appearance.
+
+### Characters
+- **Stickmen evolved into humanoids.** Added skull, nose, ears, neck, shoulders, chest, waist, pelvis, upper and lower arms, hands, thighs, knees, calves and feet using assembled 3D geometry.
+- Walking animations swing the connected arm and leg groups. First-person mode still hides the local character.
+- Preserved Patch 001's first/third-person camera, ESC menu, settings and keyboard controls.
+
+### Technical notes
+- Renderer code lives in `server/public/ascii.js`; world/input/networking code remains in `server/public/main.js`.
+- No WebGL rasterization or external ASCII conversion library.
+- This is a CPU prototype, not a production renderer. Display density and performance will depend on screen size and device. Some detailed surfaces may look sparse at distance.
+
 ## [0.1.1] — 2026-11-04 — First Patch: Spawn Into Existence
 
 ### UI / Controls
