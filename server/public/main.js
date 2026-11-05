@@ -125,8 +125,14 @@ forest.update(0, 0);
 function canStand(x, z) {
   if (Math.abs(x) >= HALF_WORLD - 1 || Math.abs(z) >= HALF_WORLD - 1) return false;
   const radius = .27;
-  return !colliders.some(c => x + radius > c.minX && x - radius < c.maxX &&
-                                   z + radius > c.minZ && z - radius < c.maxZ);
+  if (colliders.some(c => x + radius > c.minX && x - radius < c.maxX &&
+                                   z + radius > c.minZ && z - radius < c.maxZ))return false;
+  const cx=Math.floor(x/FOREST_CELL),cz=Math.floor(z/FOREST_CELL);
+  for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++){
+    const tree=treeAt(cx+dx,cz+dz);
+    if(tree&&Math.hypot(x-tree.x,z-tree.z)<.68+radius)return false;
+  }
+  return true;
 }
 
 // Pointer-lock mouse-look: one click enters, browser keeps cursor centred.
