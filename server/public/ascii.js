@@ -79,8 +79,18 @@ export class AsciiRenderer {
     this.r=new Uint8Array(this.depth.length);
     this.g=new Uint8Array(this.depth.length);
     this.b=new Uint8Array(this.depth.length);
-    this.ctx.font='bold '+this.cellHeight+'px ui-monospace,Menlo,Consolas,monospace';
+    this.ctx.font=this.cellHeight+'px monospace';
+    // Measure actual glyph width instead of assuming that .62 * font size
+    // is what the browser's monospace font really uses.
+    this.cellWidth=Math.max(1,this.ctx.measureText('M').width);
+    this.cols=Math.max(1,Math.floor(w/this.cellWidth));
+    this.rows=Math.max(1,Math.floor(h/this.cellHeight));
+    const n=this.cols*this.rows;
+    this.depth=new Float32Array(n);this.symbol=new Uint8Array(n);
+    this.r=new Uint8Array(n);this.g=new Uint8Array(n);this.b=new Uint8Array(n);
     this.ctx.textBaseline='top';
+    this.ctx.fillStyle='#0a131b';
+    this.ctx.fillRect(0,0,w,h);
   }
   draw() {
     const {ctx,cols,rows,depth,symbol,r,g,b}=this;
@@ -115,6 +125,7 @@ export class AsciiRenderer {
       r[k]=shade;g[k]=shade;b[k]=shade;
     }
 
+    let visibleSamples=0;
     for(const [mesh,points] of this.meshes) {
       if(!mesh.visible || !this.isVisible(mesh) || !points.length) continue;
       mesh.updateWorldMatrix(true,false);
@@ -139,6 +150,7 @@ export class AsciiRenderer {
         const darkness=1-Math.max(baseR,baseG,baseB);
         const density=clamp(illumination*.58+.2+darkness*.22,0,1);
         depth[k]=z;
+        visibleSamples++;
         symbol[k]=Math.max(1,Math.floor(density*(GLYPHS.length-1)));
         const factor=.42+illumination*.58;
         r[k]=Math.round(clamp(baseR*255*factor,0,255));
@@ -147,9 +159,10 @@ export class AsciiRenderer {
       }
     }
 
+    this.visibleSamples=visibleSamples;
     ctx.fillStyle='#0a131b';ctx.fillRect(0,0,this.width,this.height);
     if(this.mode==='mono'){
-      ctx.fillStyle='#b6c4c8';
+      ctx.fillStyle='#d0dae0';
       for(let y=0;y<rows;y++){
         let line='';
         for(let x=0;x<cols;x++){
