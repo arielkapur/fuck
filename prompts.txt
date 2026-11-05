@@ -79,3 +79,15 @@ static concrete environment with building/tree/NPC, black connected
 stick figures, and a stripped-down coordinates-only HUD. Added CHANGELOG.md
 and a latest-changes excerpt in README.md. Deployed changes are subject to
 Render automatically rebuilding the main branch.
+
+2026-11-05 — PATCH 002 — CONVERSATION
+-------------------------------------
+USER: "Patch 002
+
+> Can we try having the same basis but implementing the ASCII rendering from earlier?"
+ASSISTANT: "Yep. Patch 002: same world, multiplayer, and controls, but rendered as ASCII. I’ll keep it as a separate rendering layer so we can switch back to normal 3D without rewriting the game."
+USER: "> you mentioned keeping the same 3d and adding it as a separate rendering layer. Lets try it the other way around - like, pretend we made the ascii first, then implemented patch 001. Better yet, if you can model a full human instead of astickman, complete with animations, try that for the ascii world."
+ASSISTANT: "Got it — ASCII is the actual renderer, not a filter over a normal 3D game. I’ll rebuild the client around projected 3D geometry, keep Patch 001’s world and controls, and replace the stickman with a more human-shaped animated character."
+ASSISTANT (progress): "The ASCII renderer and humanoid model are committed. The character now has a torso, head, shoulders, hands, legs, and feet, with a walking cycle. I’m tightening the character proportions and text-rendering performance before calling the patch finished."
+ASSISTANT (progress): "The game now draws its 3D geometry directly as characters, with a depth buffer to handle what’s in front of what. Monochrome is the default, and I added a coloured mode and ASCII character-size settings for experimentation. I’m updating the changelog and prompt log now."
+ASSISTANT (implementation): Built `ascii.js` as a CPU software renderer with depth buffering, 3D point/normal projection, analytic ground and canvas glyph output. Replaced the character with a 3D humanoid made of connected primitive volumes and animated arm/leg groups. Kept online multiplayer and other features from Patch 001. Deployment and final playtesting remain subject to Render and browser verification.
