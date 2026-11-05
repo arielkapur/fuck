@@ -301,6 +301,14 @@ function frame(now) {
     lastSent = now;
   }
   coords.textContent = `X ${player.position.x.toFixed(1)}  Y ${player.position.y.toFixed(1)}  Z ${player.position.z.toFixed(1)}`;
-  renderer.draw();
+  try {
+    renderer.draw();
+    const boot=document.getElementById('boot-status');
+    if(boot)boot.hidden=true;
+  } catch(error) {
+    console.error('ASCII renderer failure',error);
+    const boot=document.getElementById('boot-status');
+    if(boot){boot.hidden=false;boot.style.background='#421d20';boot.textContent='RENDER ERROR: '+(error?.message||String(error));}
+  }
 }
 requestAnimationFrame(frame);
