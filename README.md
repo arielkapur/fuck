@@ -4,6 +4,8 @@ A browser-based experimental **3D multiplayer world**, built with Three.js and a
 
 **Play:** https://fuck-world.onrender.com/
 
+**Portfolio feature (after site approval):** https://arielkapur.github.io/#work · [Public-facing project summary](SHOWCASE.md)
+
 ## Latest changelog — v0.1.5 (2026-11-05)
 
 **Patch 2.3 — Unknown Territory**
