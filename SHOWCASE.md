@@ -25,7 +25,7 @@ It is meant to feel like finding a place before anyone has decided exactly what 
 
 **Three.js** for the visual world · **JavaScript** for the client · **Node.js and WebSockets** for multiplayer · **Render** for the deployed service.
 
-The live build is served from \`server/public/\`. The root \`index.html\` is useful for local static hosting; the root \`main.js\` is legacy, not the live client.
+The live build is served from `server/public/`. The root `index.html` is useful for local static hosting; the root `main.js` is legacy, not the live client.
 
 ## Known boundaries
 
